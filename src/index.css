@@ -1,0 +1,575 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --radius: 0.5rem;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 0 0% 9%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 0 0% 3.9%;
+  }
+
+  .dark {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 98%;
+    --card: 0 0% 5%;
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 5%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 0 0% 98%;
+    --primary-foreground: 0 0% 9%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 63.9%;
+    --accent: 0 0% 10%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 15%;
+    --input: 0 0% 15%;
+    --ring: 0 0% 83.1%;
+  }
+
+  /* Neon Purple Theme */
+  .theme-neon-purple {
+    --primary: 280 100% 70%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 280 100% 70%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 280 100% 70%;
+  }
+
+  .dark.theme-neon-purple {
+    --background: 280 50% 5%;
+    --foreground: 280 20% 98%;
+    --card: 280 40% 8%;
+    --card-foreground: 280 20% 98%;
+    --popover: 280 40% 8%;
+    --popover-foreground: 280 20% 98%;
+    --primary: 280 100% 70%;
+    --primary-foreground: 280 50% 10%;
+    --secondary: 280 30% 15%;
+    --secondary-foreground: 280 20% 98%;
+    --muted: 280 30% 15%;
+    --muted-foreground: 280 20% 70%;
+    --accent: 280 100% 70%;
+    --accent-foreground: 280 50% 10%;
+    --border: 280 40% 20%;
+    --input: 280 40% 20%;
+    --ring: 280 100% 70%;
+  }
+
+  /* Neon Cyan Theme */
+  .theme-neon-cyan {
+    --primary: 180 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 180 100% 50%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 180 100% 50%;
+  }
+
+  .dark.theme-neon-cyan {
+    --background: 180 50% 5%;
+    --foreground: 180 20% 98%;
+    --card: 180 40% 8%;
+    --card-foreground: 180 20% 98%;
+    --popover: 180 40% 8%;
+    --popover-foreground: 180 20% 98%;
+    --primary: 180 100% 50%;
+    --primary-foreground: 180 50% 10%;
+    --secondary: 180 30% 15%;
+    --secondary-foreground: 180 20% 98%;
+    --muted: 180 30% 15%;
+    --muted-foreground: 180 20% 70%;
+    --accent: 180 100% 50%;
+    --accent-foreground: 180 50% 10%;
+    --border: 180 40% 20%;
+    --input: 180 40% 20%;
+    --ring: 180 100% 50%;
+  }
+
+  /* Neon Pink Theme */
+  .theme-neon-pink {
+    --primary: 330 100% 60%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 330 100% 60%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 330 100% 60%;
+  }
+
+  .dark.theme-neon-pink {
+    --background: 330 50% 5%;
+    --foreground: 330 20% 98%;
+    --card: 330 40% 8%;
+    --card-foreground: 330 20% 98%;
+    --popover: 330 40% 8%;
+    --popover-foreground: 330 20% 98%;
+    --primary: 330 100% 60%;
+    --primary-foreground: 330 50% 10%;
+    --secondary: 330 30% 15%;
+    --secondary-foreground: 330 20% 98%;
+    --muted: 330 30% 15%;
+    --muted-foreground: 330 20% 70%;
+    --accent: 330 100% 60%;
+    --accent-foreground: 330 50% 10%;
+    --border: 330 40% 20%;
+    --input: 330 40% 20%;
+    --ring: 330 100% 60%;
+  }
+
+  /* Neon Green Theme */
+  .theme-neon-green {
+    --primary: 150 100% 50%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 150 100% 50%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 150 100% 50%;
+  }
+
+  .dark.theme-neon-green {
+    --background: 150 50% 5%;
+    --foreground: 150 20% 98%;
+    --card: 150 40% 8%;
+    --card-foreground: 150 20% 98%;
+    --popover: 150 40% 8%;
+    --popover-foreground: 150 20% 98%;
+    --primary: 150 100% 50%;
+    --primary-foreground: 150 50% 10%;
+    --secondary: 150 30% 15%;
+    --secondary-foreground: 150 20% 98%;
+    --muted: 150 30% 15%;
+    --muted-foreground: 150 20% 70%;
+    --accent: 150 100% 50%;
+    --accent-foreground: 150 50% 10%;
+    --border: 150 40% 20%;
+    --input: 150 40% 20%;
+    --ring: 150 100% 50%;
+  }
+
+  /* Neon Orange Theme */
+  .theme-neon-orange {
+    --primary: 30 100% 60%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 30 100% 60%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 30 100% 60%;
+  }
+
+  .dark.theme-neon-orange {
+    --background: 30 50% 5%;
+    --foreground: 30 20% 98%;
+    --card: 30 40% 8%;
+    --card-foreground: 30 20% 98%;
+    --popover: 30 40% 8%;
+    --popover-foreground: 30 20% 98%;
+    --primary: 30 100% 60%;
+    --primary-foreground: 30 50% 10%;
+    --secondary: 30 30% 15%;
+    --secondary-foreground: 30 20% 98%;
+    --muted: 30 30% 15%;
+    --muted-foreground: 30 20% 70%;
+    --accent: 30 100% 60%;
+    --accent-foreground: 30 50% 10%;
+    --border: 30 40% 20%;
+    --input: 30 40% 20%;
+    --ring: 30 100% 60%;
+  }
+
+  .theme-neon-red {
+    --primary: 0 90% 50%;
+    --primary-foreground: 0 0% 100%;
+    --accent: 0 90% 50%;
+    --accent-foreground: 0 0% 100%;
+    --ring: 0 90% 50%;
+  }
+
+  .dark.theme-neon-red {
+    --background: 0 50% 5%;
+    --foreground: 0 20% 98%;
+    --card: 0 40% 8%;
+    --card-foreground: 0 20% 98%;
+    --popover: 0 40% 8%;
+    --popover-foreground: 0 20% 98%;
+    --primary: 0 90% 50%;
+    --primary-foreground: 0 50% 10%;
+    --secondary: 0 30% 15%;
+    --secondary-foreground: 0 20% 98%;
+    --muted: 0 30% 15%;
+    --muted-foreground: 0 20% 70%;
+    --accent: 0 90% 50%;
+    --accent-foreground: 0 50% 10%;
+    --border: 0 40% 20%;
+    --input: 0 40% 20%;
+    --ring: 0 90% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  html {
+    font-size: 13px;
+  }
+
+  @media (min-width: 375px) {
+    html {
+      font-size: 13.5px;
+    }
+  }
+
+  @media (min-width: 768px) {
+    html {
+      font-size: 16px;
+    }
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 1rem);
+  }
+}
+
+/* ============================================
+   NEON EFFECTS - RRPP Theme Colors
+   ============================================ */
+
+/* Neon color variables per theme */
+:root {
+  --neon-color: transparent;
+  --neon-glow: transparent;
+}
+
+/* Dark mode without specific color = white neon */
+.dark {
+  --neon-color: hsl(0, 0%, 95%);
+  --neon-glow: hsl(0, 0%, 80%);
+}
+
+.theme-neon-purple {
+  --neon-color: hsl(280, 100%, 70%);
+  --neon-glow: hsl(280, 100%, 60%);
+}
+
+.theme-neon-cyan {
+  --neon-color: hsl(180, 100%, 50%);
+  --neon-glow: hsl(180, 100%, 40%);
+}
+
+.theme-neon-pink {
+  --neon-color: hsl(330, 100%, 60%);
+  --neon-glow: hsl(330, 100%, 50%);
+}
+
+.theme-neon-green {
+  --neon-color: hsl(150, 100%, 50%);
+  --neon-glow: hsl(150, 100%, 40%);
+}
+
+.theme-neon-orange {
+  --neon-color: hsl(30, 100%, 60%);
+  --neon-glow: hsl(30, 100%, 50%);
+}
+
+.theme-neon-red {
+  --neon-color: hsl(0, 90%, 50%);
+  --neon-glow: hsl(0, 90%, 40%);
+}
+
+/* Neon border animation - splits from center */
+@keyframes neon-border-load {
+  0% {
+    clip-path: inset(50% 0 50% 0);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
+}
+
+/* Nav icon color based on theme */
+.nav-icon-active {
+  color: hsl(var(--primary));
+}
+
+.dark .nav-icon-active {
+  color: var(--neon-color);
+}
+
+/* Neon border class for cards */
+.neon-border {
+  position: relative;
+  overflow: hidden;
+}
+
+.neon-border::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--neon-color);
+  border-radius: inherit;
+  pointer-events: none;
+  animation: neon-border-load 0.8s ease-out forwards;
+  box-shadow: inset 0 0 10px var(--neon-glow),
+              0 0 10px var(--neon-color),
+              0 0 20px var(--neon-glow);
+}
+
+/* Neon border for cards - visible glow effect */
+.neon-border-subtle {
+  position: relative;
+}
+
+/* Apply to dark mode and all neon themes */
+.dark .neon-border-subtle::before,
+.theme-neon-purple .neon-border-subtle::before,
+.theme-neon-cyan .neon-border-subtle::before,
+.theme-neon-pink .neon-border-subtle::before,
+.theme-neon-green .neon-border-subtle::before,
+.theme-neon-orange .neon-border-subtle::before,
+.theme-neon-red .neon-border-subtle::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border: 2px solid var(--neon-color);
+  border-radius: inherit;
+  pointer-events: none;
+  animation: neon-border-load 0.6s ease-out forwards;
+  box-shadow: 0 0 8px var(--neon-color),
+              0 0 15px var(--neon-glow),
+              inset 0 0 8px var(--neon-glow);
+  opacity: 0.9;
+}
+
+
+/* Container for RRPP pages with neon effect */
+.rrpp-neon-container {
+  position: relative;
+}
+
+.theme-neon-purple .rrpp-neon-container,
+.theme-neon-cyan .rrpp-neon-container,
+.theme-neon-pink .rrpp-neon-container,
+.theme-neon-green .rrpp-neon-container,
+.theme-neon-orange .rrpp-neon-container,
+.theme-neon-red .rrpp-neon-container {
+  border: 1px solid var(--neon-color);
+  box-shadow: 0 0 10px var(--neon-glow),
+              inset 0 0 10px rgba(0, 0, 0, 0.1);
+  animation: neon-border-load 0.8s ease-out forwards;
+}
+
+/* Full screen neon border - animates from bottom to top, then fades out */
+.neon-screen-border {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  pointer-events: none;
+  border: 4px solid transparent;
+}
+
+@keyframes neon-screen-load {
+  0% {
+    clip-path: polygon(0 100%, 100% 100%, 100% 100%, 0 100%);
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  60% {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    opacity: 1;
+  }
+  80% {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    opacity: 1;
+  }
+  100% {
+    clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+    opacity: 0;
+  }
+}
+
+/* Apply neon screen border for dark mode and all neon themes */
+.dark .neon-screen-border,
+.theme-neon-purple .neon-screen-border,
+.theme-neon-cyan .neon-screen-border,
+.theme-neon-pink .neon-screen-border,
+.theme-neon-green .neon-screen-border,
+.theme-neon-orange .neon-screen-border,
+.theme-neon-red .neon-screen-border {
+  border-color: var(--neon-color);
+  box-shadow: inset 0 0 30px var(--neon-glow),
+              inset 0 0 60px rgba(0, 0, 0, 0.2),
+              0 0 20px var(--neon-color),
+              0 0 40px var(--neon-glow);
+  animation: neon-screen-load 2s ease-out forwards;
+}
+
+
+/* Sonner Toast Colors */
+[data-sonner-toast][data-type="success"] {
+  border-color: rgb(34 197 94) !important;
+  background-color: rgb(240 253 244) !important;
+  color: rgb(21 128 61) !important;
+}
+
+[data-sonner-toast][data-type="success"] [data-content] {
+  color: rgb(21 128 61) !important;
+}
+
+[data-sonner-toast][data-type="error"] {
+  border-color: rgb(239 68 68) !important;
+  background-color: rgb(254 242 242) !important;
+  color: rgb(185 28 28) !important;
+}
+
+[data-sonner-toast][data-type="error"] [data-content] {
+  color: rgb(185 28 28) !important;
+}
+
+[data-sonner-toast][data-type="warning"] {
+  border-color: rgb(234 179 8) !important;
+  background-color: rgb(254 252 232) !important;
+  color: rgb(161 98 7) !important;
+}
+
+[data-sonner-toast][data-type="warning"] [data-content] {
+  color: rgb(161 98 7) !important;
+}
+
+[data-sonner-toast][data-type="info"] {
+  border-color: rgb(59 130 246) !important;
+  background-color: rgb(239 246 255) !important;
+  color: rgb(29 78 216) !important;
+}
+
+[data-sonner-toast][data-type="info"] [data-content] {
+  color: rgb(29 78 216) !important;
+}
+
+/* Dark mode */
+.dark [data-sonner-toast][data-type="success"] {
+  background-color: rgb(5 46 22) !important;
+  color: rgb(134 239 172) !important;
+}
+
+.dark [data-sonner-toast][data-type="success"] [data-content] {
+  color: rgb(134 239 172) !important;
+}
+
+.dark [data-sonner-toast][data-type="error"] {
+  background-color: rgb(69 10 10) !important;
+  color: rgb(252 165 165) !important;
+}
+
+.dark [data-sonner-toast][data-type="error"] [data-content] {
+  color: rgb(252 165 165) !important;
+}
+
+.dark [data-sonner-toast][data-type="warning"] {
+  background-color: rgb(66 32 6) !important;
+  color: rgb(253 224 71) !important;
+}
+
+.dark [data-sonner-toast][data-type="warning"] [data-content] {
+  color: rgb(253 224 71) !important;
+}
+
+.dark [data-sonner-toast][data-type="info"] {
+  background-color: rgb(12 24 68) !important;
+  color: rgb(147 197 253) !important;
+}
+
+.dark [data-sonner-toast][data-type="info"] [data-content] {
+  color: rgb(147 197 253) !important;
+}
+
+/* Ajustes de tamaño de fuente para móviles */
+@layer base {
+  /* Ajustes para dispositivos muy pequeños (iPhone Mini, SE) */
+  @media (max-width: 374px) {
+    h1 {
+      @apply text-xl;
+    }
+    h2 {
+      @apply text-lg;
+    }
+    h3 {
+      @apply text-base;
+    }
+
+    .text-3xl {
+      @apply text-xl;
+    }
+    .text-2xl {
+      @apply text-lg;
+    }
+    .text-xl {
+      @apply text-base;
+    }
+
+    /* Reducir padding en cards y contenedores */
+    .p-6 {
+      @apply p-4;
+    }
+    .p-4 {
+      @apply p-3;
+    }
+    .gap-6 {
+      @apply gap-4;
+    }
+  }
+
+  /* Reducir títulos en móvil estándar */
+  @media (min-width: 375px) and (max-width: 767px) {
+    h1 {
+      @apply text-2xl;
+    }
+    h2 {
+      @apply text-xl;
+    }
+    h3 {
+      @apply text-lg;
+    }
+
+    /* Ajustar tamaños de texto comunes */
+    .text-3xl {
+      @apply text-2xl;
+    }
+    .text-2xl {
+      @apply text-xl;
+    }
+    .text-xl {
+      @apply text-lg;
+    }
+  }
+}

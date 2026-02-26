@@ -1,0 +1,11 @@
+                                                                                                                                                                      
+  ALTER TABLE public.personal                                                                                                                                          
+  DROP CONSTRAINT IF EXISTS grupo_requerido_para_rrpp_admin;                                                                                                           
+                                                                                                                                                                       
+  ALTER TABLE public.personal                                                                                                                                          
+  ADD CONSTRAINT grupo_requerido_para_rrpp_admin CHECK (                                                                                                               
+      (rol IN ('seguridad', 'bartender') AND grupo IS NULL) OR                                                                                                         
+      (rol IN ('admin', 'rrpp') AND grupo IS NOT NULL) OR                                                                                                              
+      (rol IN ('seguridad', 'bartender') AND grupo IS NOT NULL)                                                                                                        
+  );                                                                                                                                                                   
+    
