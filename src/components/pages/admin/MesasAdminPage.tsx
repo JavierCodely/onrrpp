@@ -296,8 +296,25 @@ export function MesasAdminPage() {
               <div className="text-center py-8 text-muted-foreground">Cargando mesas...</div>
             ) : (
               <div className="flex flex-col lg:flex-row gap-6 items-start">
-                {/* Izquierda: lista de mesas */}
-                <div className="w-full lg:w-72 xl:w-80 shrink-0 flex flex-col gap-2">
+                {/* Mapa — primero en móvil (order-1), derecha en desktop (lg:order-2) */}
+                <div className="w-full flex-1 min-w-0 order-1 lg:order-2">
+                  <SectorMapView
+                    imagenUrl={sector.imagen_url}
+                    mesas={mesas}
+                    onMesaClick={(mesa) => {
+                      setPositionMode(mesa.id)
+                      toast.info(`"${mesa.nombre}" seleccionada. Hacé click en el mapa para moverla.`)
+                    }}
+                    onMesaLongPress={(mesa) => handleOpenDialog(mesa)}
+                    isAdmin={true}
+                    onMesaDragEnd={handleMesaDragEnd}
+                    onMapClick={handleMapClick}
+                    highlightMesaId={positionMode}
+                  />
+                </div>
+
+                {/* Lista — segundo en móvil (order-2), izquierda en desktop (lg:order-1) */}
+                <div className="w-full lg:w-72 xl:w-80 shrink-0 flex flex-col gap-2 order-2 lg:order-1">
                   <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
                     Lista de Mesas ({mesas.length})
                   </h4>
@@ -402,23 +419,6 @@ export function MesasAdminPage() {
                       ))}
                     </div>
                   )}
-                </div>
-
-                {/* Derecha: mapa con ratio 9:16 exacto */}
-                <div className="flex-1 min-w-0">
-                  <SectorMapView
-                    imagenUrl={sector.imagen_url}
-                    mesas={mesas}
-                    onMesaClick={(mesa) => {
-                      setPositionMode(mesa.id)
-                      toast.info(`"${mesa.nombre}" seleccionada. Hacé click en el mapa para moverla.`)
-                    }}
-                    onMesaLongPress={(mesa) => handleOpenDialog(mesa)}
-                    isAdmin={true}
-                    onMesaDragEnd={handleMesaDragEnd}
-                    onMapClick={handleMapClick}
-                    highlightMesaId={positionMode}
-                  />
                 </div>
               </div>
             )}
