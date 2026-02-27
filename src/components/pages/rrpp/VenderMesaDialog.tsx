@@ -67,9 +67,7 @@ export default function VenderMesaDialog({
   const pendingSearchRef = useRef(false)
 
   // Payment states
-  const [metodoPago, setMetodoPago] = useState<'efectivo' | 'transferencia' | 'mixto'>('efectivo')
-  const [montoEfectivo, setMontoEfectivo] = useState('')
-  const [montoTransferencia, setMontoTransferencia] = useState('')
+  const [metodoPago, setMetodoPago] = useState<'efectivo' | 'transferencia' | ''>('')
 
   // Form states
   const [nombre, setNombre] = useState('')
@@ -170,9 +168,7 @@ export default function VenderMesaDialog({
       setLocalidad('')
       setUbicacionExpandida(false)
       setLocalidades([])
-      setMetodoPago('efectivo')
-      setMontoEfectivo('')
-      setMontoTransferencia('')
+      setMetodoPago('')
     }
   }, [open])
 
@@ -306,22 +302,17 @@ export default function VenderMesaDialog({
       }
     }
 
-    // Validate payment for mixto
-    if (metodoPago === 'mixto') {
-      const ef = Number(montoEfectivo || 0)
-      const tr = Number(montoTransferencia || 0)
-      if (Math.abs((ef + tr) - mesa.precio) > 0.01) {
-        toast.error('Los montos de efectivo y transferencia deben sumar el precio de la mesa')
-        return
-      }
+    if (!metodoPago) {
+      toast.error('Debes seleccionar un método de pago')
+      return
     }
 
     const clienteNombre = nombre.trim() && apellido.trim()
       ? `${nombre.trim()} ${apellido.trim()}`
       : nombre.trim() || null
 
-    const ef = metodoPago === 'efectivo' ? mesa.precio : metodoPago === 'transferencia' ? 0 : Number(montoEfectivo || 0)
-    const tr = metodoPago === 'transferencia' ? mesa.precio : metodoPago === 'efectivo' ? 0 : Number(montoTransferencia || 0)
+    const ef = metodoPago === 'efectivo' ? mesa.precio : 0
+    const tr = metodoPago === 'transferencia' ? mesa.precio : 0
 
     await venderMesa(
       mesa.id,
@@ -639,64 +630,24 @@ export default function VenderMesaDialog({
             {dniVerificado && !clienteDenegado && (
               <div className="space-y-3">
                 <Label className="text-base font-semibold">Método de Pago *</Label>
-                <div className="grid grid-cols-3 gap-2">
-                  {(['efectivo', 'transferencia', 'mixto'] as const).map((m) => (
-                    <Button
-                      key={m}
-                      type="button"
-                      variant={metodoPago === m ? 'default' : 'outline'}
-                      className={`capitalize ${metodoPago === m ? (m === 'efectivo' ? 'bg-green-600 hover:bg-green-700' : m === 'transferencia' ? 'bg-blue-600 hover:bg-blue-700' : 'bg-purple-600 hover:bg-purple-700') : ''}`}
-                      onClick={() => {
-                        setMetodoPago(m)
-                        if (m === 'efectivo') {
-                          setMontoEfectivo(mesa.precio.toString())
-                          setMontoTransferencia('0')
-                        } else if (m === 'transferencia') {
-                          setMontoEfectivo('0')
-                          setMontoTransferencia(mesa.precio.toString())
-                        } else {
-                          setMontoEfectivo('')
-                          setMontoTransferencia('')
-                        }
-                      }}
-                    >
-                      {m}
-                    </Button>
-                  ))}
+                <div className="grid grid-cols-2 gap-2">
+                  <Button
+                    type="button"
+                    variant={metodoPago === 'efectivo' ? 'default' : 'outline'}
+                    className={metodoPago === 'efectivo' ? 'bg-green-600 hover:bg-green-700' : ''}
+                    onClick={() => setMetodoPago('efectivo')}
+                  >
+                    Efectivo
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={metodoPago === 'transferencia' ? 'default' : 'outline'}
+                    className={metodoPago === 'transferencia' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                    onClick={() => setMetodoPago('transferencia')}
+                  >
+                    Transferencia
+                  </Button>
                 </div>
-                {metodoPago === 'mixto' && (
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Efectivo</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={montoEfectivo}
-                        onChange={(e) => setMontoEfectivo(e.target.value)}
-                        placeholder="0"
-                        inputMode="decimal"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Transferencia</Label>
-                      <Input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        value={montoTransferencia}
-                        onChange={(e) => setMontoTransferencia(e.target.value)}
-                        placeholder="0"
-                        inputMode="decimal"
-                      />
-                    </div>
-                    {montoEfectivo && montoTransferencia && (Number(montoEfectivo) + Number(montoTransferencia)) !== mesa.precio && (
-                      <p className="col-span-2 text-xs text-red-500">
-                        Los montos deben sumar ${mesa.precio.toFixed(2)} (actual: ${(Number(montoEfectivo || 0) + Number(montoTransferencia || 0)).toFixed(2)})
-                      </p>
-                    )}
-                  </div>
-                )}
               </div>
             )}
 

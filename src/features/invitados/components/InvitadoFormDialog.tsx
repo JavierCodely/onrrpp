@@ -1084,13 +1084,24 @@ export function InvitadoFormDialog({
                 </div>
                 <div className="space-y-2">
                   <Label>Método de Pago *</Label>
-                  <Select value={metodoPago} onValueChange={(v: MetodoPago) => setMetodoPago(v)}>
-                    <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="efectivo">Efectivo</SelectItem>
-                      <SelectItem value="transferencia">Transferencia</SelectItem>
-                    </SelectContent>
-                  </Select>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      type="button"
+                      variant={metodoPago === 'efectivo' ? 'default' : 'outline'}
+                      className={metodoPago === 'efectivo' ? 'bg-green-600 hover:bg-green-700' : ''}
+                      onClick={() => setMetodoPago('efectivo')}
+                    >
+                      Efectivo
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={metodoPago === 'transferencia' ? 'default' : 'outline'}
+                      className={metodoPago === 'transferencia' ? 'bg-blue-600 hover:bg-blue-700' : ''}
+                      onClick={() => setMetodoPago('transferencia')}
+                    >
+                      Transferencia
+                    </Button>
+                  </div>
                 </div>
                 {metodoPago && (
                   <div className="space-y-2">
