@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -61,6 +61,11 @@ export default function VenderMesaDialog({
   const [clienteDenegado, setClienteDenegado] = useState(false)
   const [editandoCliente, setEditandoCliente] = useState(false)
 
+  // Autocomplete DNI
+  const [dniSuggestions, setDniSuggestions] = useState<Array<{ dni: string; nombre: string; apellido: string }>>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
+  const pendingSearchRef = useRef(false)
+
   // Payment states
   const [metodoPago, setMetodoPago] = useState<'efectivo' | 'transferencia' | 'mixto'>('efectivo')
   const [montoEfectivo, setMontoEfectivo] = useState('')
@@ -89,6 +94,34 @@ export default function VenderMesaDialog({
 
   const mostrarDatosCliente = dniVerificado && clienteEncontrado && !clienteDenegado && !editandoCliente
   const mostrarFormulario = dniVerificado && !clienteDenegado && (!clienteEncontrado || editandoCliente)
+
+  // Autocomplete: buscar clientes mientras se escribe el DNI
+  useEffect(() => {
+    if (dniVerificado || dniInput.length < 3) {
+      setDniSuggestions([])
+      setShowSuggestions(false)
+      return
+    }
+
+    if (pendingSearchRef.current) {
+      pendingSearchRef.current = false
+      handleSearchDni()
+      return
+    }
+
+    const timer = setTimeout(async () => {
+      const { data } = await clientesService.searchClientesByDNI(dniInput, 5)
+      if (data && data.length > 0) {
+        setDniSuggestions(data)
+        setShowSuggestions(true)
+      } else {
+        setDniSuggestions([])
+        setShowSuggestions(false)
+      }
+    }, 300)
+
+    return () => clearTimeout(timer)
+  }, [dniInput, dniVerificado])
 
   // Load countries on mount
   useEffect(() => {
@@ -124,6 +157,8 @@ export default function VenderMesaDialog({
       setClienteEncontrado(null)
       setClienteDenegado(false)
       setEditandoCliente(false)
+      setDniSuggestions([])
+      setShowSuggestions(false)
       setNombre('')
       setApellido('')
       setEdad('')
@@ -330,27 +365,54 @@ export default function VenderMesaDialog({
             {/* DNI Field */}
             <div className="space-y-2">
               <Label htmlFor="dni-mesa" className="text-base font-semibold">DNI *</Label>
-              <div className="flex gap-2">
-                <Input
-                  id="dni-mesa"
-                  value={formatDni(dniInput)}
-                  onChange={(e) => {
-                    const rawValue = unformatDni(e.target.value)
-                    const limitedValue = rawValue.slice(0, 9)
-                    setDniInput(limitedValue)
-                    if (dniVerificado) handleChangeDni()
-                  }}
-                  placeholder="Ej: 12.345.678"
-                  disabled={checkingDni}
-                  className="text-lg font-bold"
-                  inputMode="numeric"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !dniVerificado) {
-                      e.preventDefault()
-                      handleSearchDni()
-                    }
-                  }}
-                />
+              <div className="relative flex gap-2">
+                <div className="relative flex-1">
+                  <Input
+                    id="dni-mesa"
+                    value={formatDni(dniInput)}
+                    onChange={(e) => {
+                      const rawValue = unformatDni(e.target.value)
+                      const limitedValue = rawValue.slice(0, 9)
+                      setDniInput(limitedValue)
+                      if (dniVerificado) handleChangeDni()
+                    }}
+                    placeholder="Ej: 12.345.678"
+                    disabled={checkingDni}
+                    className="text-lg font-bold"
+                    inputMode="numeric"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && !dniVerificado) {
+                        e.preventDefault()
+                        handleSearchDni()
+                      }
+                    }}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                  />
+
+                  {/* Suggestions dropdown */}
+                  {showSuggestions && dniSuggestions.length > 0 && (
+                    <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-background border rounded-md shadow-lg max-h-48 overflow-y-auto">
+                      {dniSuggestions.map((cliente) => (
+                        <button
+                          key={cliente.dni}
+                          type="button"
+                          className="w-full px-3 py-2 text-left hover:bg-accent flex items-center justify-between gap-2 text-sm"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => {
+                            setShowSuggestions(false)
+                            setDniSuggestions([])
+                            pendingSearchRef.current = true
+                            setDniInput(cliente.dni)
+                          }}
+                        >
+                          <span className="font-medium truncate">{cliente.nombre} {cliente.apellido}</span>
+                          <span className="text-muted-foreground shrink-0">{formatDni(cliente.dni)}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
                 {!dniVerificado && (
                   <Button
                     type="button"

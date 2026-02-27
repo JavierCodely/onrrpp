@@ -426,6 +426,7 @@ export function VentasPage() {
                   <Table>
                     <TableHeader>
                       <TableRow>
+                        <TableHead>Mesa</TableHead>
                         <TableHead>Cliente</TableHead>
                         <TableHead>DNI</TableHead>
                         <TableHead>Método</TableHead>
@@ -437,6 +438,9 @@ export function VentasPage() {
                     <TableBody>
                       {ventasMesas.map((vm) => (
                         <TableRow key={vm.id}>
+                          <TableCell className="font-medium">
+                            {vm.mesa_nombre ?? '-'}
+                          </TableCell>
                           <TableCell className="font-medium">
                             {vm.cliente_nombre || '-'}
                           </TableCell>
@@ -468,6 +472,9 @@ export function VentasPage() {
                       <CardContent className="p-4 space-y-2">
                         <div className="flex items-start justify-between">
                           <div>
+                            {vm.mesa_nombre && (
+                              <p className="text-xs font-semibold text-primary mb-0.5">{vm.mesa_nombre}</p>
+                            )}
                             <h3 className="font-semibold">{vm.cliente_nombre || 'Sin nombre'}</h3>
                             <p className="text-xs text-muted-foreground truncate max-w-[180px]">DNI: {vm.cliente_dni}</p>
                           </div>

@@ -47,40 +47,44 @@ export function SectorMapView({
 
   return (
     <div className="relative w-full">
-      <div
-        ref={containerRef}
-        id="sector-map-container"
-        className={`relative w-full aspect-[9/16] bg-gray-900 rounded-lg overflow-hidden ${
-          onMapClick ? 'cursor-crosshair' : ''
-        }`}
-        style={{
-          backgroundImage: `url(${imagenUrl})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          maxHeight: '75vh',
-        }}
-        onClick={handleContainerClick}
-      >
-        {mesas.map((mesa) => (
-          <MesaCircle
-            key={mesa.id}
-            mesa={mesa}
-            onClick={onMesaClick}
-            onLongPress={onMesaLongPress}
-            isAdmin={isAdmin}
-            onDragEnd={onMesaDragEnd}
-            highlight={highlightMesaId === mesa.id}
-            currentUserId={currentUserId}
+      {/* paddingBottom = 1920/1080 * 100 = 177.78% fuerza el ratio 9:16 exacto */}
+      <div className="relative w-full" style={{ paddingBottom: '177.78%' }}>
+        <div
+          ref={containerRef}
+          id="sector-map-container"
+          className={`absolute inset-0 rounded-lg overflow-hidden ${
+            onMapClick ? 'cursor-crosshair' : ''
+          }`}
+          onClick={handleContainerClick}
+        >
+          <img
+            src={imagenUrl}
+            alt="Mapa del sector"
+            className="absolute inset-0 w-full h-full object-fill pointer-events-none select-none"
+            draggable={false}
           />
-        ))}
 
-        {mesas.length === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <p className="text-white text-center bg-black/50 px-4 py-2 rounded-lg">
-              {isAdmin ? 'Creá una mesa y posicionala en el mapa' : 'No hay mesas disponibles'}
-            </p>
-          </div>
-        )}
+          {mesas.map((mesa) => (
+            <MesaCircle
+              key={mesa.id}
+              mesa={mesa}
+              onClick={onMesaClick}
+              onLongPress={onMesaLongPress}
+              isAdmin={isAdmin}
+              onDragEnd={onMesaDragEnd}
+              highlight={highlightMesaId === mesa.id}
+              currentUserId={currentUserId}
+            />
+          ))}
+
+          {mesas.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <p className="text-white text-center bg-black/50 px-4 py-2 rounded-lg">
+                {isAdmin ? 'Creá una mesa y posicionala en el mapa' : 'No hay mesas disponibles'}
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="mt-2 flex gap-3 justify-center text-xs text-muted-foreground">

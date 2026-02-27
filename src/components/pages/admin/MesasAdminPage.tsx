@@ -76,7 +76,7 @@ export function MesasAdminPage() {
 
   const loadEventos = async () => {
     const { data } = await eventosService.getEventos()
-    setEventos(data || [])
+    setEventos((data || []).filter((e) => e.estado))
   }
 
   const handleOpenDialog = (mesa?: Mesa) => {
@@ -272,7 +272,7 @@ export function MesasAdminPage() {
       {selectedSector && sector && (
         <Card>
           <CardHeader>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <CardTitle>Mesas de {sector.nombre}</CardTitle>
                 <CardDescription>
@@ -295,37 +295,25 @@ export function MesasAdminPage() {
             {loadingMesas ? (
               <div className="text-center py-8 text-muted-foreground">Cargando mesas...</div>
             ) : (
-              <>
-                <SectorMapView
-                  imagenUrl={sector.imagen_url}
-                  mesas={mesas}
-                  onMesaClick={(mesa) => {
-                    if (positionMode) {
-                      // Si ya hay una seleccionada, cambia a esta
-                      setPositionMode(mesa.id)
-                    } else {
-                      // Seleccionar para mover
-                      setPositionMode(mesa.id)
-                      toast.info(`"${mesa.nombre}" seleccionada. Hacé click en el mapa para moverla.`)
-                    }
-                  }}
-                  onMesaLongPress={(mesa) => handleOpenDialog(mesa)}
-                  isAdmin={true}
-                  onMesaDragEnd={handleMesaDragEnd}
-                  onMapClick={handleMapClick}
-                  highlightMesaId={positionMode}
-                />
-
-                {mesas.length > 0 && (
-                  <div className="mt-6 space-y-2">
-                    <h4 className="font-semibold">Lista de Mesas</h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="flex flex-col lg:flex-row gap-6 items-start">
+                {/* Izquierda: lista de mesas */}
+                <div className="w-full lg:w-72 xl:w-80 shrink-0 flex flex-col gap-2">
+                  <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
+                    Lista de Mesas ({mesas.length})
+                  </h4>
+                  {mesas.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">No hay mesas en este sector.</p>
+                  ) : (
+                    <div className="flex flex-col gap-2">
                       {mesas.map((mesa) => (
-                        <Card key={mesa.id} className="p-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1">
-                              <div className="flex items-center gap-2 mb-1">
-                                <span className="font-semibold">{mesa.nombre}</span>
+                        <Card
+                          key={mesa.id}
+                          className={`p-3 transition-colors ${positionMode === mesa.id ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-950/20' : ''}`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
+                                <span className="font-semibold text-sm">{mesa.nombre}</span>
                                 <Badge
                                   className={
                                     mesa.estado === 'libre'
@@ -338,18 +326,15 @@ export function MesasAdminPage() {
                                   {mesa.estado}
                                 </Badge>
                               </div>
-                              <div className="text-xs space-y-1 text-muted-foreground">
+                              <div className="text-xs space-y-0.5 text-muted-foreground">
                                 <div className="flex items-center gap-1">
                                   <Users className="h-3 w-3" />
                                   {mesa.escaneos_seguridad_count}/{mesa.max_personas} personas
                                 </div>
                                 <div className="flex items-center gap-1">
                                   <DollarSign className="h-3 w-3" />
-                                  ${mesa.precio.toFixed(2)}
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <DollarSign className="h-3 w-3" />
-                                  Comisión: {mesa.comision_tipo === 'porcentaje'
+                                  ${mesa.precio.toFixed(2)} · Comisión:{' '}
+                                  {mesa.comision_tipo === 'porcentaje'
                                     ? `${mesa.comision_rrpp_porcentaje}%`
                                     : `$${mesa.comision_rrpp_monto}`}
                                 </div>
@@ -361,7 +346,7 @@ export function MesasAdminPage() {
                                 )}
                               </div>
                             </div>
-                            <div className="flex gap-1">
+                            <div className="flex gap-0.5 shrink-0">
                               <Button
                                 onClick={() => {
                                   setPositionMode(mesa.id)
@@ -416,9 +401,26 @@ export function MesasAdminPage() {
                         </Card>
                       ))}
                     </div>
-                  </div>
-                )}
-              </>
+                  )}
+                </div>
+
+                {/* Derecha: mapa con ratio 9:16 exacto */}
+                <div className="flex-1 min-w-0">
+                  <SectorMapView
+                    imagenUrl={sector.imagen_url}
+                    mesas={mesas}
+                    onMesaClick={(mesa) => {
+                      setPositionMode(mesa.id)
+                      toast.info(`"${mesa.nombre}" seleccionada. Hacé click en el mapa para moverla.`)
+                    }}
+                    onMesaLongPress={(mesa) => handleOpenDialog(mesa)}
+                    isAdmin={true}
+                    onMesaDragEnd={handleMesaDragEnd}
+                    onMapClick={handleMapClick}
+                    highlightMesaId={positionMode}
+                  />
+                </div>
+              </div>
             )}
           </CardContent>
         </Card>

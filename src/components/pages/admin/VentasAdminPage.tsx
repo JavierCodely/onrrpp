@@ -24,8 +24,9 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Switch } from '@/components/ui/switch'
 import { toast } from 'sonner'
-import { DollarSign, Users, Calendar, TrendingUp, Receipt, CheckCircle2 } from 'lucide-react'
+import { DollarSign, Users, Calendar, TrendingUp, Receipt, CheckCircle2, UtensilsCrossed } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -42,6 +43,8 @@ export function VentasAdminPage() {
   const [updatingAcreditacion, setUpdatingAcreditacion] = useState<string | null>(null)
   const [filtroEntradas, setFiltroEntradas] = useState<'todas' | 'acreditadas' | 'no_acreditadas'>('todas')
   const [filtroComision, setFiltroComision] = useState<'todas' | 'acreditadas' | 'no_acreditadas'>('todas')
+  const [mostrarMesas, setMostrarMesas] = useState(true)
+  const [mostrarLotes, setMostrarLotes] = useState(true)
 
   useEffect(() => {
     loadEventos()
@@ -65,6 +68,15 @@ export function VentasAdminPage() {
       )
     }
 
+    // Excluir filas que solo tienen el tipo oculto
+    if (!mostrarMesas && !mostrarLotes) {
+      filtered = []
+    } else if (!mostrarMesas) {
+      filtered = filtered.filter((v) => v.ventas.length > 0)
+    } else if (!mostrarLotes) {
+      filtered = filtered.filter((v) => v.mesas.length > 0)
+    }
+
     // Filtrar por estado de entradas acreditadas
     if (filtroEntradas === 'acreditadas') {
       filtered = filtered.filter((v) => v.todas_entradas_acreditadas)
@@ -79,8 +91,11 @@ export function VentasAdminPage() {
       filtered = filtered.filter((v) => !v.todas_comisiones_acreditadas)
     }
 
+    // Ordenar de mayor a menor por total a acreditar
+    filtered.sort((a, b) => b.total_a_acreditar - a.total_a_acreditar)
+
     setFilteredVentas(filtered)
-  }, [searchRRPP, ventasResumen, filtroEntradas, filtroComision])
+  }, [searchRRPP, ventasResumen, filtroEntradas, filtroComision, mostrarMesas, mostrarLotes])
 
   const loadEventos = async () => {
     if (!user) return
@@ -133,22 +148,30 @@ export function VentasAdminPage() {
     setUpdatingAcreditacion(null)
   }
 
-  // Calcular totales generales
+  // Calcular totales generales respetando ambos filtros
   const totalesGenerales = filteredVentas.reduce(
-    (acc, rrpp) => ({
-      totalVentas: acc.totalVentas + rrpp.ventas.length,
-      totalTransferencia: acc.totalTransferencia + rrpp.total_transferencia,
-      totalEfectivo: acc.totalEfectivo + rrpp.total_efectivo,
-      totalAcreditar: acc.totalAcreditar + rrpp.total_a_acreditar,
-      totalComisiones: acc.totalComisiones + rrpp.total_comisiones,
-    }),
-    {
-      totalVentas: 0,
-      totalTransferencia: 0,
-      totalEfectivo: 0,
-      totalAcreditar: 0,
-      totalComisiones: 0,
-    }
+    (acc, rrpp) => {
+      const mesasTransf   = mostrarMesas  ? rrpp.mesas.reduce((s, m) => s + m.monto_transferencia, 0) : 0
+      const mesasEfect    = mostrarMesas  ? rrpp.mesas.reduce((s, m) => s + m.monto_efectivo, 0)      : 0
+      const mesasTotal    = mostrarMesas  ? rrpp.mesas.reduce((s, m) => s + m.precio_venta, 0)        : 0
+      const mesasComision = mostrarMesas  ? rrpp.mesas.reduce((s, m) => s + m.comision_calculada, 0)  : 0
+
+      const lotesTransf   = mostrarLotes  ? rrpp.ventas.reduce((s, v) => s + v.monto_transferencia, 0) : 0
+      const lotesEfect    = mostrarLotes  ? rrpp.ventas.reduce((s, v) => s + v.monto_efectivo, 0)      : 0
+      const lotesTotal    = mostrarLotes  ? rrpp.ventas.reduce((s, v) => s + v.monto_total, 0)         : 0
+      const lotesComision = mostrarLotes
+        ? rrpp.total_comisiones - rrpp.mesas.reduce((s, m) => s + m.comision_calculada, 0)
+        : 0
+
+      return {
+        totalVentas:       acc.totalVentas       + (mostrarLotes ? rrpp.ventas.length : 0) + (mostrarMesas ? rrpp.mesas.length : 0),
+        totalTransferencia: acc.totalTransferencia + lotesTransf  + mesasTransf,
+        totalEfectivo:     acc.totalEfectivo     + lotesEfect    + mesasEfect,
+        totalAcreditar:    acc.totalAcreditar    + lotesTotal    + mesasTotal,
+        totalComisiones:   acc.totalComisiones   + lotesComision + mesasComision,
+      }
+    },
+    { totalVentas: 0, totalTransferencia: 0, totalEfectivo: 0, totalAcreditar: 0, totalComisiones: 0 }
   )
 
   return (
@@ -167,7 +190,7 @@ export function VentasAdminPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
             <div className="space-y-2">
               <Label htmlFor="evento">Evento *</Label>
               <Select value={selectedEvento} onValueChange={setSelectedEvento}>
@@ -222,10 +245,35 @@ export function VentasAdminPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="flex flex-col gap-3 pb-1">
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="mostrar-lotes"
+                  checked={mostrarLotes}
+                  onCheckedChange={setMostrarLotes}
+                />
+                <Label htmlFor="mostrar-lotes" className="flex items-center gap-1.5 cursor-pointer">
+                  <Receipt className="h-4 w-4" />
+                  Ventas de Lotes
+                </Label>
+              </div>
+              <div className="flex items-center gap-3">
+                <Switch
+                  id="mostrar-mesas"
+                  checked={mostrarMesas}
+                  onCheckedChange={setMostrarMesas}
+                />
+                <Label htmlFor="mostrar-mesas" className="flex items-center gap-1.5 cursor-pointer">
+                  <UtensilsCrossed className="h-4 w-4" />
+                  Ventas de Mesas
+                </Label>
+              </div>
+            </div>
           </div>
 
           {/* Mostrar filtros activos */}
-          {(filtroEntradas !== 'todas' || filtroComision !== 'todas') && (
+          {(filtroEntradas !== 'todas' || filtroComision !== 'todas' || !mostrarMesas || !mostrarLotes) && (
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm text-muted-foreground">Filtros activos:</span>
               {filtroEntradas !== 'todas' && (
@@ -236,6 +284,18 @@ export function VentasAdminPage() {
               {filtroComision !== 'todas' && (
                 <Badge variant="secondary" className="gap-1">
                   Comisiones: {filtroComision === 'acreditadas' ? '✓ Acreditadas' : '✗ No Acreditadas'}
+                </Badge>
+              )}
+              {!mostrarLotes && (
+                <Badge variant="secondary" className="gap-1">
+                  <Receipt className="h-3 w-3" />
+                  Lotes ocultos
+                </Badge>
+              )}
+              {!mostrarMesas && (
+                <Badge variant="secondary" className="gap-1">
+                  <UtensilsCrossed className="h-3 w-3" />
+                  Mesas ocultas
                 </Badge>
               )}
             </div>
@@ -332,7 +392,7 @@ export function VentasAdminPage() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>RRPP</TableHead>
-                      <TableHead>Lotes Vendidos</TableHead>
+                      <TableHead>Ventas</TableHead>
                       <TableHead className="text-right">Transferencia</TableHead>
                       <TableHead className="text-right">Efectivo</TableHead>
                       <TableHead className="text-right">Total a Acreditar</TableHead>
@@ -342,33 +402,57 @@ export function VentasAdminPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {filteredVentas.map((rrpp) => (
+                    {filteredVentas.map((rrpp) => {
+                      // Calcular totales por fila respetando ambos filtros
+                      const mesasTransf   = rrpp.mesas.reduce((s, m) => s + m.monto_transferencia, 0)
+                      const mesasEfect    = rrpp.mesas.reduce((s, m) => s + m.monto_efectivo, 0)
+                      const mesasTotal    = rrpp.mesas.reduce((s, m) => s + m.precio_venta, 0)
+                      const mesasComision = rrpp.mesas.reduce((s, m) => s + m.comision_calculada, 0)
+                      const lotesTransf   = rrpp.ventas.reduce((s, v) => s + v.monto_transferencia, 0)
+                      const lotesEfect    = rrpp.ventas.reduce((s, v) => s + v.monto_efectivo, 0)
+                      const lotesTotal    = rrpp.ventas.reduce((s, v) => s + v.monto_total, 0)
+                      const lotesComision = rrpp.total_comisiones - mesasComision
+
+                      const transferencia  = (mostrarLotes ? lotesTransf  : 0) + (mostrarMesas ? mesasTransf  : 0)
+                      const efectivo       = (mostrarLotes ? lotesEfect    : 0) + (mostrarMesas ? mesasEfect   : 0)
+                      const totalAcreditar = (mostrarLotes ? lotesTotal    : 0) + (mostrarMesas ? mesasTotal   : 0)
+                      const comisiones     = (mostrarLotes ? lotesComision : 0) + (mostrarMesas ? mesasComision : 0)
+
+                      return (
                       <TableRow key={rrpp.id_rrpp}>
                         <TableCell className="font-medium">
                           {rrpp.nombre_rrpp} {rrpp.apellido_rrpp}
                         </TableCell>
                         <TableCell>
                           <div className="space-y-1">
-                            {rrpp.lotes.map((lote) => (
+                            {mostrarLotes && rrpp.lotes.map((lote) => (
                               <div key={lote.id_lote} className="flex items-center gap-2">
                                 <Badge variant="outline">
                                   {lote.nombre_lote}: {lote.cantidad_vendida}
                                 </Badge>
                               </div>
                             ))}
+                            {mostrarMesas && rrpp.mesas.map((m) => (
+                              <div key={m.id} className="flex items-center gap-2">
+                                <Badge variant="secondary" className="gap-1">
+                                  <UtensilsCrossed className="h-3 w-3" />
+                                  {m.mesa_nombre ?? 'Mesa'}
+                                </Badge>
+                              </div>
+                            ))}
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatCurrency(rrpp.total_transferencia)}
+                          {formatCurrency(transferencia)}
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatCurrency(rrpp.total_efectivo)}
+                          {formatCurrency(efectivo)}
                         </TableCell>
                         <TableCell className="text-right font-bold">
-                          {formatCurrency(rrpp.total_a_acreditar)}
+                          {formatCurrency(totalAcreditar)}
                         </TableCell>
                         <TableCell className="text-right font-bold text-green-600">
-                          {formatCurrency(rrpp.total_comisiones)}
+                          {formatCurrency(comisiones)}
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-2">
@@ -399,7 +483,8 @@ export function VentasAdminPage() {
                           </div>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      )
+                    })}
                   </TableBody>
                 </Table>
               </div>

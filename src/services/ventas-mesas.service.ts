@@ -17,7 +17,7 @@ class VentasMesasService {
     try {
       let query = supabase
         .from('ventas_mesas')
-        .select('*')
+        .select('*, mesa:uuid_mesa(nombre)')
         .eq('id_rrpp', idRrpp)
         .order('created_at', { ascending: false })
 
@@ -29,7 +29,13 @@ class VentasMesasService {
 
       if (error) throw error
 
-      return { data, error: null }
+      const mapped = (data || []).map((vm: any) => ({
+        ...vm,
+        mesa_nombre: vm.mesa?.nombre ?? null,
+        mesa: undefined,
+      })) as VentaMesa[]
+
+      return { data: mapped, error: null }
     } catch (err) {
       return { data: null, error: err as Error }
     }
@@ -39,13 +45,19 @@ class VentasMesasService {
     try {
       const { data, error } = await supabase
         .from('ventas_mesas')
-        .select('*')
+        .select('*, mesa:uuid_mesa(nombre)')
         .eq('uuid_evento', uuidEvento)
         .order('created_at', { ascending: false })
 
       if (error) throw error
 
-      return { data, error: null }
+      const mapped = (data || []).map((vm: any) => ({
+        ...vm,
+        mesa_nombre: vm.mesa?.nombre ?? null,
+        mesa: undefined,
+      })) as VentaMesa[]
+
+      return { data: mapped, error: null }
     } catch (err) {
       return { data: null, error: err as Error }
     }

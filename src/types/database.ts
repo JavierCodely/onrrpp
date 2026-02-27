@@ -292,6 +292,7 @@ export interface VentaMesa {
   telefono_cliente?: string
   cantidad_personas: number
   precio_final: number
+  mesa_nombre?: string | null
   fecha_entrega_consumicion: string | null
   created_at: string
   updated_at: string

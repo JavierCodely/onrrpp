@@ -76,7 +76,7 @@ export function SectoresPage() {
 
   const loadEventos = async () => {
     const { data } = await eventosService.getEventos()
-    setEventos(data || [])
+    setEventos((data || []).filter((e) => e.estado))
   }
 
   const loadSeguridadesDisponibles = async () => {

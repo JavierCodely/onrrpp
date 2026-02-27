@@ -10,6 +10,7 @@ export interface VentaRRPPResumen {
     cantidad_vendida: number
     precio_lote: number
   }[]
+  mesas: VentaMesaDetalle[]
   total_transferencia: number
   total_efectivo: number
   total_a_acreditar: number
@@ -33,12 +34,25 @@ export interface VentaDetalle {
   created_at: string
 }
 
+export interface VentaMesaDetalle {
+  id: string
+  uuid_mesa: string
+  mesa_nombre: string | null
+  cliente_nombre: string | null
+  precio_venta: number
+  monto_efectivo: number
+  monto_transferencia: number
+  comision_calculada: number
+  created_at: string
+}
+
 /**
  * Obtiene el resumen de ventas por RRPP para un evento específico
+ * Incluye tanto ventas de lotes/entradas como ventas de mesas
  */
 export async function getVentasResumenByEvento(eventoId: string) {
   try {
-    // Obtener todas las ventas del evento con información de lotes y RRPP
+    // Obtener ventas de lotes/entradas
     const { data: ventas, error: ventasError } = await supabase
       .from('ventas')
       .select(`
@@ -73,6 +87,33 @@ export async function getVentasResumenByEvento(eventoId: string) {
 
     if (ventasError) throw ventasError
 
+    // Obtener ventas de mesas
+    const { data: ventasMesas, error: ventasMesasError } = await supabase
+      .from('ventas_mesas')
+      .select(`
+        id,
+        uuid_mesa,
+        id_rrpp,
+        cliente_nombre,
+        precio_venta,
+        monto_efectivo,
+        monto_transferencia,
+        comision_calculada,
+        created_at,
+        mesa:uuid_mesa (
+          nombre
+        ),
+        personal:id_rrpp (
+          id,
+          nombre,
+          apellido
+        )
+      `)
+      .eq('uuid_evento', eventoId)
+      .order('created_at', { ascending: false })
+
+    if (ventasMesasError) throw ventasMesasError
+
     // Agrupar ventas por RRPP
     const ventasPorRRPP = new Map<string, VentaRRPPResumen>()
 
@@ -87,6 +128,7 @@ export async function getVentasResumenByEvento(eventoId: string) {
           nombre_rrpp: personal.nombre,
           apellido_rrpp: personal.apellido,
           lotes: [],
+          mesas: [],
           total_transferencia: 0,
           total_efectivo: 0,
           total_a_acreditar: 0,
@@ -99,7 +141,6 @@ export async function getVentasResumenByEvento(eventoId: string) {
 
       const resumen = ventasPorRRPP.get(rrppId)!
 
-      // Agregar venta a la lista
       resumen.ventas.push({
         id: venta.id,
         uuid_invitado: venta.uuid_invitado,
@@ -114,12 +155,10 @@ export async function getVentasResumenByEvento(eventoId: string) {
         created_at: venta.created_at,
       })
 
-      // Actualizar totales
       resumen.total_transferencia += Number(venta.monto_transferencia)
       resumen.total_efectivo += Number(venta.monto_efectivo)
       resumen.total_a_acreditar += Number(venta.monto_total)
 
-      // Calcular comisión
       if (lote) {
         const comision = calcularComision(
           lote.comision_tipo,
@@ -130,7 +169,6 @@ export async function getVentasResumenByEvento(eventoId: string) {
         resumen.total_comisiones += comision
       }
 
-      // Actualizar estados de acreditación
       if (!venta.entradas_acreditadas) {
         resumen.todas_entradas_acreditadas = false
       }
@@ -138,7 +176,6 @@ export async function getVentasResumenByEvento(eventoId: string) {
         resumen.todas_comisiones_acreditadas = false
       }
 
-      // Agregar o actualizar información del lote
       const loteExistente = resumen.lotes.find((l) => l.id_lote === venta.uuid_lote)
       if (loteExistente) {
         loteExistente.cantidad_vendida++
@@ -150,6 +187,48 @@ export async function getVentasResumenByEvento(eventoId: string) {
           precio_lote: lote?.precio || 0,
         })
       }
+    }
+
+    // Incorporar ventas de mesas al resumen por RRPP
+    for (const ventaMesa of ventasMesas || []) {
+      const rrppId = ventaMesa.id_rrpp
+      const personal = ventaMesa.personal as any
+
+      if (!ventasPorRRPP.has(rrppId)) {
+        ventasPorRRPP.set(rrppId, {
+          id_rrpp: rrppId,
+          nombre_rrpp: personal.nombre,
+          apellido_rrpp: personal.apellido,
+          lotes: [],
+          mesas: [],
+          total_transferencia: 0,
+          total_efectivo: 0,
+          total_a_acreditar: 0,
+          total_comisiones: 0,
+          todas_entradas_acreditadas: true,
+          todas_comisiones_acreditadas: true,
+          ventas: [],
+        })
+      }
+
+      const resumen = ventasPorRRPP.get(rrppId)!
+
+      resumen.mesas.push({
+        id: ventaMesa.id,
+        uuid_mesa: ventaMesa.uuid_mesa,
+        mesa_nombre: (ventaMesa.mesa as any)?.nombre ?? null,
+        cliente_nombre: ventaMesa.cliente_nombre,
+        precio_venta: Number(ventaMesa.precio_venta),
+        monto_efectivo: Number(ventaMesa.monto_efectivo || 0),
+        monto_transferencia: Number(ventaMesa.monto_transferencia || 0),
+        comision_calculada: Number(ventaMesa.comision_calculada),
+        created_at: ventaMesa.created_at,
+      })
+
+      resumen.total_efectivo += Number(ventaMesa.monto_efectivo || 0)
+      resumen.total_transferencia += Number(ventaMesa.monto_transferencia || 0)
+      resumen.total_a_acreditar += Number(ventaMesa.precio_venta)
+      resumen.total_comisiones += Number(ventaMesa.comision_calculada)
     }
 
     return {
