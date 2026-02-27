@@ -17,11 +17,14 @@ import {
   UserCheck,
   Image as ImageIcon,
   Ticket,
+  UtensilsCrossed,
 } from 'lucide-react'
 import type { Evento } from '@/types/database'
+import type { MesaEventoStats } from './useEventosData'
 
 interface EventosTableProps {
   eventos: Evento[]
+  mesaStats: Record<string, MesaEventoStats>
   onOpenLotesDialog: (evento: Evento) => void
   onToggleEstado: (evento: Evento) => void
   onEdit: (evento: Evento) => void
@@ -31,6 +34,7 @@ interface EventosTableProps {
 
 export function EventosTable({
   eventos,
+  mesaStats,
   onOpenLotesDialog,
   onToggleEstado,
   onEdit,
@@ -73,16 +77,44 @@ export function EventosTable({
             </TableCell>
             <TableCell>{formatFecha(evento.fecha)}</TableCell>
             <TableCell>
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-muted-foreground" />
-                {evento.total_invitados}
-              </div>
+              {(() => {
+                const mesas = mesaStats[evento.id]
+                const totalInvitados = evento.total_invitados + (mesas?.capacidad ?? 0)
+                return (
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-1.5 font-medium">
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                      {totalInvitados}
+                    </div>
+                    {mesas && mesas.capacidad > 0 && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <UtensilsCrossed className="h-3 w-3" />
+                        {evento.total_invitados} inv + {mesas.capacidad} mesas
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
             </TableCell>
             <TableCell>
-              <div className="flex items-center gap-2">
-                <UserCheck className="h-4 w-4 text-green-600" />
-                {evento.total_ingresados}
-              </div>
+              {(() => {
+                const mesas = mesaStats[evento.id]
+                const totalIngresados = evento.total_ingresados + (mesas?.scans ?? 0)
+                return (
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-1.5 font-medium">
+                      <UserCheck className="h-4 w-4 text-green-600" />
+                      {totalIngresados}
+                    </div>
+                    {mesas && mesas.scans > 0 && (
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <UtensilsCrossed className="h-3 w-3" />
+                        {evento.total_ingresados} inv + {mesas.scans} mesas
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
             </TableCell>
             <TableCell>
               <Badge

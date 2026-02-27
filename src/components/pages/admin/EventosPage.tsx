@@ -51,6 +51,7 @@ export function EventosPage() {
               <div className="hidden md:block">
                 <EventosTable
                   eventos={data.eventos}
+                  mesaStats={data.mesaStats}
                   onOpenLotesDialog={data.handleOpenLotesDialog}
                   onToggleEstado={data.handleToggleEstado}
                   onEdit={data.handleOpenDialog}

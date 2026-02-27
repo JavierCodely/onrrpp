@@ -9,12 +9,22 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { Calendar, Upload, X } from 'lucide-react'
 import { Calendar as CalendarComponent } from '@/components/ui/calendar'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import type { Evento } from '@/types/database'
+
+const HOURS = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'))
+const MINUTES = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'))
 
 interface EventoFormDialogProps {
   open: boolean
@@ -79,58 +89,87 @@ export function EventoFormDialog({
 
             <div className="space-y-2">
               <Label>Fecha y hora</Label>
-              <div className="flex gap-2">
-                <Popover>
-                  <PopoverTrigger asChild>
-                    <Button
-                      variant="outline"
-                      className={`flex-1 justify-start text-left font-normal ${
-                        !formData.fecha ? 'text-muted-foreground' : ''
-                      }`}
-                    >
-                      <Calendar className="mr-2 h-4 w-4" />
-                      {formData.fecha
-                        ? format(new Date(formData.fecha), "d 'de' MMMM yyyy", { locale: es })
-                        : 'Selecciona una fecha'}
-                    </Button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-auto p-0" align="start">
-                    <CalendarComponent
-                      mode="single"
-                      selected={formData.fecha ? new Date(formData.fecha) : undefined}
-                      onSelect={(date) => {
-                        if (date) {
-                          const currentTime = formData.fecha
-                            ? formData.fecha.slice(11, 16)
-                            : '00:00'
-                          const year = date.getFullYear()
-                          const month = String(date.getMonth() + 1).padStart(2, '0')
-                          const day = String(date.getDate()).padStart(2, '0')
-                          setFormData({
-                            ...formData,
-                            fecha: `${year}-${month}-${day}T${currentTime}`,
-                          })
-                        }
-                      }}
-                      locale={es}
-                    />
-                  </PopoverContent>
-                </Popover>
-                <Input
-                  type="time"
-                  className="w-[120px]"
-                  value={formData.fecha ? formData.fecha.slice(11, 16) : ''}
-                  onChange={(e) => {
+              {/* Fecha */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={`w-full justify-start text-left font-normal ${
+                      !formData.fecha ? 'text-muted-foreground' : ''
+                    }`}
+                  >
+                    <Calendar className="mr-2 h-4 w-4" />
+                    {formData.fecha
+                      ? format(new Date(formData.fecha), "d 'de' MMMM yyyy", { locale: es })
+                      : 'Selecciona una fecha'}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <CalendarComponent
+                    mode="single"
+                    selected={formData.fecha ? new Date(formData.fecha) : undefined}
+                    onSelect={(date) => {
+                      if (date) {
+                        const currentTime = formData.fecha
+                          ? formData.fecha.slice(11, 16)
+                          : '00:00'
+                        const year = date.getFullYear()
+                        const month = String(date.getMonth() + 1).padStart(2, '0')
+                        const day = String(date.getDate()).padStart(2, '0')
+                        setFormData({
+                          ...formData,
+                          fecha: `${year}-${month}-${day}T${currentTime}`,
+                        })
+                      }
+                    }}
+                    locale={es}
+                  />
+                </PopoverContent>
+              </Popover>
+
+              {/* Hora — dos selects para evitar el input nativo con AM/PM */}
+              <div className="flex items-center gap-2">
+                <Select
+                  value={formData.fecha ? formData.fecha.slice(11, 13) : ''}
+                  onValueChange={(h) => {
                     const datePart = formData.fecha
                       ? formData.fecha.slice(0, 10)
                       : new Date().toISOString().slice(0, 10)
-                    setFormData({
-                      ...formData,
-                      fecha: `${datePart}T${e.target.value}`,
-                    })
+                    const min = formData.fecha ? formData.fecha.slice(14, 16) : '00'
+                    setFormData({ ...formData, fecha: `${datePart}T${h}:${min}` })
                   }}
-                  required
-                />
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="HH" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-48">
+                    {HOURS.map((h) => (
+                      <SelectItem key={h} value={h}>{h}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <span className="text-lg font-bold text-muted-foreground">:</span>
+
+                <Select
+                  value={formData.fecha ? formData.fecha.slice(14, 16) : ''}
+                  onValueChange={(m) => {
+                    const datePart = formData.fecha
+                      ? formData.fecha.slice(0, 10)
+                      : new Date().toISOString().slice(0, 10)
+                    const h = formData.fecha ? formData.fecha.slice(11, 13) : '00'
+                    setFormData({ ...formData, fecha: `${datePart}T${h}:${m}` })
+                  }}
+                >
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="MM" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-48">
+                    {MINUTES.map((m) => (
+                      <SelectItem key={m} value={m}>{m}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 

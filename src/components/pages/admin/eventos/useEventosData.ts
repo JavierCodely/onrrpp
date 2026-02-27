@@ -19,9 +19,15 @@ import { toast } from 'sonner'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 
+export interface MesaEventoStats {
+  capacidad: number
+  scans: number
+}
+
 export function useEventosData() {
   const { user } = useAuthStore()
   const [eventos, setEventos] = useState<Evento[]>([])
+  const [mesaStats, setMesaStats] = useState<Record<string, MesaEventoStats>>({})
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const [dialogOpen, setDialogOpen] = useState(false)
@@ -103,6 +109,23 @@ export function useEventosData() {
     } else if (data) {
       setEventos(data)
     }
+
+    // Cargar estadísticas de mesas vendidas por evento
+    const { data: mesas } = await supabase
+      .from('mesas')
+      .select('uuid_evento, max_personas, escaneos_seguridad_count')
+      .eq('estado', 'vendido')
+
+    const stats: Record<string, MesaEventoStats> = {}
+    for (const mesa of mesas || []) {
+      if (!stats[mesa.uuid_evento]) {
+        stats[mesa.uuid_evento] = { capacidad: 0, scans: 0 }
+      }
+      stats[mesa.uuid_evento].capacidad += mesa.max_personas ?? 0
+      stats[mesa.uuid_evento].scans += mesa.escaneos_seguridad_count ?? 0
+    }
+    setMesaStats(stats)
+
     setLoading(false)
   }
 
@@ -550,6 +573,7 @@ export function useEventosData() {
 
   return {
     eventos,
+    mesaStats,
     loading,
     uploading,
     dialogOpen,
