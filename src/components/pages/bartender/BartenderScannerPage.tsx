@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { mesasRPCService } from '@/services/mesas-rpc.service'
+import { useAuthStore } from '@/stores/auth.store'
 
 export function BartenderScannerPage() {
   const [scanning, setScanning] = useState(false)
@@ -29,6 +30,7 @@ export function BartenderScannerPage() {
   const [ventaInfo, setVentaInfo] = useState<any>(null)
   const [currentQrCode, setCurrentQrCode] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
+  const { user } = useAuthStore()
 
   const isProcessingRef = useRef(false)
   const handleQRDetectedRef = useRef<((qr: string) => Promise<void>) | null>(null)
@@ -210,7 +212,12 @@ export function BartenderScannerPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="space-y-1">
+        {user && (
+          <p className="text-2xl md:text-3xl font-extrabold tracking-tight">
+            Hola {user.personal.nombre} 🍹
+          </p>
+        )}
         <h1 className="text-3xl font-bold tracking-tight">Escáner de Consumiciones</h1>
         <p className="text-muted-foreground">
           Escanea el QR para entregar las consumiciones de mesas

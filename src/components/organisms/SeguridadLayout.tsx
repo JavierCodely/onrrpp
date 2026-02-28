@@ -58,6 +58,11 @@ export function SeguridadLayout({ children }: SeguridadLayoutProps) {
     <>
       <div className="p-6 border-b border-slate-200 dark:border-slate-800">
         <h1 className="text-xl font-bold">Panel Seguridad</h1>
+        {user && (
+          <p className="mt-1 text-xs text-muted-foreground">
+            Hola {user.personal.nombre}
+          </p>
+        )}
         <Badge className="mt-2 bg-green-500">Seguridad</Badge>
       </div>
 
@@ -141,7 +146,14 @@ export function SeguridadLayout({ children }: SeguridadLayoutProps) {
                 </div>
               </SheetContent>
             </Sheet>
-            <h1 className="font-semibold">Panel Seguridad</h1>
+            <div className="flex flex-col">
+              <h1 className="font-semibold">Panel Seguridad</h1>
+              {user && (
+                <span className="text-xs text-muted-foreground">
+                  Hola {user.personal.nombre}
+                </span>
+              )}
+            </div>
           </header>
 
           {/* Main content area */}

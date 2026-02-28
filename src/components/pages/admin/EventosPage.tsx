@@ -67,6 +67,7 @@ export function EventosPage() {
               <div className="md:hidden">
                 <EventosCards
                   eventos={data.eventos}
+                  mesaStats={data.mesaStats}
                   onOpenLotesDialog={data.handleOpenLotesDialog}
                   onToggleEstado={data.handleToggleEstado}
                   onEdit={data.handleOpenDialog}
@@ -126,7 +127,7 @@ export function EventosPage() {
 
       <LoteFormDialog
         open={data.loteFormDialogOpen}
-        onOpenChange={data.setLoteFormDialogOpen}
+        onOpenChange={(open) => { if (!open) data.handleCloseLoteForm() }}
         selectedLote={data.selectedLote}
         loteFormData={data.loteFormData}
         setLoteFormData={data.setLoteFormData}

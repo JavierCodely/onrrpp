@@ -10,7 +10,7 @@ interface BartenderLayoutProps {
 
 export function BartenderLayout({ children }: BartenderLayoutProps) {
   const location = useLocation()
-  const { signOut } = useAuthStore()
+  const { user, signOut } = useAuthStore()
 
   const handleSignOut = async () => {
     await signOut()
@@ -23,8 +23,13 @@ export function BartenderLayout({ children }: BartenderLayoutProps) {
     <div className="min-h-screen bg-background flex flex-col">
       <header className="sticky top-0 z-40 w-full border-b bg-background">
         <div className="container flex h-16 items-center justify-between px-4">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col gap-0.5">
             <h1 className="text-xl font-bold">Bartender Panel</h1>
+            {user && (
+              <p className="text-xs text-muted-foreground">
+                Hola {user.personal.nombre}
+              </p>
+            )}
           </div>
           <Button variant="ghost" size="sm" onClick={handleSignOut} className="gap-2">
             <LogOut className="h-4 w-4" />

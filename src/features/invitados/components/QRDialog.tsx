@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { Calendar, Ticket, DollarSign, Crown, X } from 'lucide-react'
+import { MONEDA_SIMBOLO } from '@/types/database'
 import { QRCodeSVG } from 'qrcode.react'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
@@ -19,6 +20,11 @@ interface QRDialogProps {
 
 export function QRDialog({ open, onOpenChange, invitado, clubNombre }: QRDialogProps) {
   if (!invitado) return null
+
+  const venta = invitado.ventas?.[0]
+  const moneda = (venta?.moneda ?? 'ARS') as keyof typeof MONEDA_SIMBOLO
+  const simbolo = MONEDA_SIMBOLO[moneda] ?? '$'
+  const precioMostrar = venta?.monto_total ?? invitado.lote?.precio ?? 0
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -93,10 +99,13 @@ export function QRDialog({ open, onOpenChange, invitado, clubNombre }: QRDialogP
                   </div>
                   <div className="flex items-center gap-1 text-sm">
                     <DollarSign className="h-3 w-3" />
-                    {invitado.lote.precio === 0 ? (
+                    {precioMostrar === 0 ? (
                       <span className="text-green-600 font-medium">GRATIS</span>
                     ) : (
-                      <span className="font-medium">${invitado.lote.precio.toFixed(2)}</span>
+                      <span className={`font-medium${moneda === 'USD' ? ' text-blue-600' : moneda === 'BRL' ? ' text-green-600' : ''}`}>
+                        {simbolo}{precioMostrar.toFixed(2)}
+                        {moneda !== 'ARS' && <span className="ml-1 text-xs opacity-75">{moneda}</span>}
+                      </span>
                     )}
                   </div>
                 </div>

@@ -10,6 +10,7 @@ export interface CreateVentaInput {
   monto_total: number
   monto_efectivo: number
   monto_transferencia: number
+  moneda?: string
   observaciones?: string
 }
 
@@ -19,6 +20,7 @@ export interface UpdateVentaInput {
   monto_total?: number
   monto_efectivo?: number
   monto_transferencia?: number
+  moneda?: string
   observaciones?: string
 }
 
@@ -90,7 +92,17 @@ class VentasService {
         *,
         invitado:invitados!uuid_invitado(nombre, apellido, dni),
         evento:eventos!uuid_evento(nombre),
-        lote:lotes!uuid_lote(nombre, precio, es_vip),
+        lote:lotes!uuid_lote(
+          nombre,
+          precio,
+          es_vip,
+          comision_tipo,
+          comision_rrpp_monto,
+          comision_rrpp_porcentaje,
+          comision_ars,
+          comision_usd,
+          comision_reales
+        ),
         rrpp:personal!id_rrpp(nombre, apellido)
       `)
       .eq('uuid_evento', uuid_evento)
@@ -114,7 +126,17 @@ class VentasService {
         *,
         invitado:invitados!uuid_invitado(nombre, apellido, dni),
         evento:eventos!uuid_evento(nombre),
-        lote:lotes!uuid_lote(nombre, precio, es_vip),
+        lote:lotes!uuid_lote(
+          nombre,
+          precio,
+          es_vip,
+          comision_tipo,
+          comision_rrpp_monto,
+          comision_rrpp_porcentaje,
+          comision_ars,
+          comision_usd,
+          comision_reales
+        ),
         rrpp:personal!id_rrpp(nombre, apellido)
       `)
       .eq('id_rrpp', id_rrpp)

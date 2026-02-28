@@ -9,6 +9,7 @@ export interface InvitadoConLote extends Invitado {
     banner_url: string | null
     fecha: string
   }
+  ventas?: { moneda: string; monto_total: number }[] | null
 }
 
 export interface CreateInvitadoDTO {
@@ -88,7 +89,8 @@ export const invitadosService = {
         .select(`
           *,
           lote:lotes(*),
-          evento:eventos!invitados_uuid_evento_fkey(nombre, estado, banner_url, fecha)
+          evento:eventos!invitados_uuid_evento_fkey(nombre, estado, banner_url, fecha),
+          ventas(moneda, monto_total)
         `)
         .eq('id_rrpp', rrppId)
 

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase'
+import type { TipoMoneda } from '../types/database'
 
 export interface VentaRRPPResumen {
   id_rrpp: string
@@ -28,6 +29,7 @@ export interface VentaDetalle {
   monto_total: number
   monto_efectivo: number
   monto_transferencia: number
+  moneda: TipoMoneda
   entradas_acreditadas: boolean
   comision_acreditada: boolean
   observaciones: string | null
@@ -43,6 +45,7 @@ export interface VentaMesaDetalle {
   monto_efectivo: number
   monto_transferencia: number
   comision_calculada: number
+  moneda: TipoMoneda
   created_at: string
 }
 
@@ -64,6 +67,7 @@ export async function getVentasResumenByEvento(eventoId: string) {
         monto_total,
         monto_efectivo,
         monto_transferencia,
+        moneda,
         entradas_acreditadas,
         comision_acreditada,
         observaciones,
@@ -99,6 +103,7 @@ export async function getVentasResumenByEvento(eventoId: string) {
         monto_efectivo,
         monto_transferencia,
         comision_calculada,
+        moneda,
         created_at,
         mesa:uuid_mesa (
           nombre
@@ -149,6 +154,7 @@ export async function getVentasResumenByEvento(eventoId: string) {
         monto_total: Number(venta.monto_total),
         monto_efectivo: Number(venta.monto_efectivo),
         monto_transferencia: Number(venta.monto_transferencia),
+        moneda: (venta.moneda as TipoMoneda) || 'ARS',
         entradas_acreditadas: venta.entradas_acreditadas,
         comision_acreditada: venta.comision_acreditada,
         observaciones: venta.observaciones,
@@ -222,6 +228,7 @@ export async function getVentasResumenByEvento(eventoId: string) {
         monto_efectivo: Number(ventaMesa.monto_efectivo || 0),
         monto_transferencia: Number(ventaMesa.monto_transferencia || 0),
         comision_calculada: Number(ventaMesa.comision_calculada),
+        moneda: (ventaMesa.moneda as TipoMoneda) || 'ARS',
         created_at: ventaMesa.created_at,
       })
 

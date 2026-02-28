@@ -1,4 +1,5 @@
 import { useScannerData } from './scanner/useScannerData'
+import { useAuthStore } from '@/stores/auth.store'
 import { ScannerCamera } from './scanner/ScannerCamera'
 import { InvitadoConfirmationModal } from './scanner/InvitadoConfirmationModal'
 import { InvitadoRejectionModal } from './scanner/InvitadoRejectionModal'
@@ -16,10 +17,16 @@ import { AnimatePresence } from 'framer-motion'
 
 export function ScannerPage() {
   const data = useScannerData()
+  const { user } = useAuthStore()
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="space-y-1">
+        {user && (
+          <p className="text-2xl md:text-3xl font-extrabold tracking-tight">
+            Hola {user.personal.nombre} 👋
+          </p>
+        )}
         <h1 className="text-3xl font-bold tracking-tight">Escanear QR</h1>
         <p className="text-muted-foreground">
           Escanea el QR de los invitados para marcar su ingreso

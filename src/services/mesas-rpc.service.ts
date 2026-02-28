@@ -33,7 +33,8 @@ class MesasRPCService {
     precioVenta: number | null,
     metodoPago: string = 'efectivo',
     montoEfectivo: number = 0,
-    montoTransferencia: number = 0
+    montoTransferencia: number = 0,
+    moneda: string = 'ARS'
   ): Promise<{ data: VentaMesaResult | null; error: Error | null }> {
     try {
       const { data, error } = await supabase.rpc('vender_mesa', {
@@ -45,6 +46,7 @@ class MesasRPCService {
         p_metodo_pago: metodoPago,
         p_monto_efectivo: montoEfectivo,
         p_monto_transferencia: montoTransferencia,
+        p_moneda: moneda,
       })
       if (error) throw error
       return { data, error: null }

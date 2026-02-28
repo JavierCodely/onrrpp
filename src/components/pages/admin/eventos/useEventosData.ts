@@ -13,7 +13,7 @@ import {
 import { supabase } from '@/lib/supabase'
 import type { Evento, Lote } from '@/types/database'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
-import type { CreateLoteDTO, UpdateLoteDTO } from '@/services/lotes.service'
+import type { CreateLoteDTO } from '@/services/lotes.service'
 import type { GrupoType } from '@/types/database'
 import { toast } from 'sonner'
 import { format } from 'date-fns'
@@ -50,11 +50,16 @@ export function useEventosData() {
     nombre: '',
     cantidad_maxima: '',
     precio: '',
+    precio_usd: '',
+    precio_reales: '',
     es_vip: false,
     grupo: '' as GrupoType | '' | 'TODOS',
     comision_tipo: 'monto' as 'monto' | 'porcentaje',
     comision_rrpp_monto: '',
     comision_rrpp_porcentaje: '',
+    comision_ars: '',
+    comision_usd: '',
+    comision_reales: '',
   })
   const [deleteLoteDialogOpen, setDeleteLoteDialogOpen] = useState(false)
 
@@ -352,11 +357,16 @@ export function useEventosData() {
         nombre: lote.nombre,
         cantidad_maxima: lote.cantidad_maxima.toString(),
         precio: lote.precio.toString(),
+        precio_usd: lote.precio_usd != null ? lote.precio_usd.toString() : '',
+        precio_reales: lote.precio_reales != null ? lote.precio_reales.toString() : '',
         es_vip: lote.es_vip,
         grupo: lote.grupo || 'TODOS',
         comision_tipo: lote.comision_tipo,
         comision_rrpp_monto: lote.comision_rrpp_monto.toString(),
         comision_rrpp_porcentaje: lote.comision_rrpp_porcentaje.toString(),
+        comision_ars: lote.comision_ars != null ? lote.comision_ars.toString() : '0',
+        comision_usd: lote.comision_usd != null ? lote.comision_usd.toString() : '0',
+        comision_reales: lote.comision_reales != null ? lote.comision_reales.toString() : '0',
       })
     } else {
       setSelectedLote(null)
@@ -364,11 +374,16 @@ export function useEventosData() {
         nombre: '',
         cantidad_maxima: '',
         precio: '',
+        precio_usd: '',
+        precio_reales: '',
         es_vip: false,
         grupo: '',
         comision_tipo: 'monto',
         comision_rrpp_monto: '',
         comision_rrpp_porcentaje: '',
+        comision_ars: '',
+        comision_usd: '',
+        comision_reales: '',
       })
     }
     setLoteFormDialogOpen(true)
@@ -381,11 +396,16 @@ export function useEventosData() {
       nombre: '',
       cantidad_maxima: '',
       precio: '',
+      precio_usd: '',
+      precio_reales: '',
       es_vip: false,
       grupo: '',
       comision_tipo: 'monto',
       comision_rrpp_monto: '',
       comision_rrpp_porcentaje: '',
+      comision_ars: '',
+      comision_usd: '',
+      comision_reales: '',
     })
   }
 
@@ -396,8 +416,13 @@ export function useEventosData() {
 
     const cantidadMaxima = parseInt(loteFormData.cantidad_maxima)
     const precio = parseFloat(loteFormData.precio)
+    const precioUsd = loteFormData.precio_usd ? parseFloat(loteFormData.precio_usd) : null
+    const precioReales = loteFormData.precio_reales ? parseFloat(loteFormData.precio_reales) : null
     const comisionMonto = parseFloat(loteFormData.comision_rrpp_monto) || 0
     const comisionPorcentaje = parseFloat(loteFormData.comision_rrpp_porcentaje) || 0
+    const comisionArs = parseFloat(loteFormData.comision_ars) || 0
+    const comisionUsd = parseFloat(loteFormData.comision_usd) || 0
+    const comisionReales = parseFloat(loteFormData.comision_reales) || 0
 
     if (isNaN(cantidadMaxima) || cantidadMaxima <= 0) {
       toast.error('Cantidad máxima inválida')
@@ -409,6 +434,20 @@ export function useEventosData() {
       return
     }
 
+    if (precioUsd !== null && (isNaN(precioUsd) || precioUsd < 0)) {
+      toast.error('Precio en USD inválido')
+      return
+    }
+
+    if (precioReales !== null && (isNaN(precioReales) || precioReales < 0)) {
+      toast.error('Precio en Reales inválido')
+      return
+    }
+
+    if (comisionArs < 0 || comisionUsd < 0 || comisionReales < 0) {
+      toast.error('Las comisiones por moneda no pueden ser negativas')
+      return
+    }
     if (loteFormData.comision_tipo === 'monto') {
       if (isNaN(comisionMonto) || comisionMonto < 0) {
         toast.error('Comisión en pesos inválida')
@@ -427,17 +466,21 @@ export function useEventosData() {
 
     try {
       if (selectedLote) {
-        const updates: UpdateLoteDTO = {
+        const { error } = await lotesService.updateLoteCompleto(selectedLote.id, {
           nombre: loteFormData.nombre.trim(),
           cantidad_maxima: cantidadMaxima,
           precio: precio,
+          precio_usd: precioUsd,
+          precio_reales: precioReales,
           es_vip: loteFormData.es_vip,
           grupo: grupoValue,
           comision_tipo: loteFormData.comision_tipo,
           comision_rrpp_monto: comisionMonto,
           comision_rrpp_porcentaje: comisionPorcentaje,
-        }
-        const { error } = await lotesService.updateLote(selectedLote.id, updates)
+          comision_ars: comisionArs,
+          comision_usd: comisionUsd,
+          comision_reales: comisionReales,
+        })
         if (error) throw error
         toast.success('Lote actualizado correctamente')
       } else {
@@ -445,11 +488,16 @@ export function useEventosData() {
           nombre: loteFormData.nombre.trim(),
           cantidad_maxima: cantidadMaxima,
           precio: precio,
+          precio_usd: precioUsd,
+          precio_reales: precioReales,
           es_vip: loteFormData.es_vip,
           grupo: grupoValue,
           comision_tipo: loteFormData.comision_tipo,
           comision_rrpp_monto: comisionMonto,
           comision_rrpp_porcentaje: comisionPorcentaje,
+          comision_ars: comisionArs,
+          comision_usd: comisionUsd,
+          comision_reales: comisionReales,
           uuid_evento: selectedEvento.id,
         }
         const { error } = await lotesService.createLote(newLote)

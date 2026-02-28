@@ -28,7 +28,8 @@ import { clientesService, type ClienteCheckResult } from '@/services/clientes.se
 import { invitadosService, type InvitadoConLote } from '@/services/invitados.service'
 import { ventasService } from '@/services/ventas.service'
 import { ubicacionesService } from '@/services/ubicaciones.service'
-import type { Lote, MetodoPago, Evento, Venta } from '@/types/database'
+import type { Lote, MetodoPago, Evento, Venta, TipoMoneda } from '@/types/database'
+import { MONEDA_LABELS, MONEDA_SIMBOLO } from '@/types/database'
 import { toast } from 'sonner'
 
 interface InvitadoFormDialogProps {
@@ -105,6 +106,7 @@ export function InvitadoFormDialog({
 
   const [uuidLote, setUuidLote] = useState('')
   const [metodoPago, setMetodoPago] = useState<MetodoPago | ''>('')
+  const [moneda, setMoneda] = useState<TipoMoneda>('ARS')
   const [observaciones, setObservaciones] = useState('')
   const [profileImageFile, setProfileImageFile] = useState<File | null>(null)
   const [profileImagePreview, setProfileImagePreview] = useState('')
@@ -125,8 +127,17 @@ export function InvitadoFormDialog({
 
   // Datos derivados
   const selectedLote = lotes.find(l => l.id === uuidLote)
-  const selectedLotePrecio = selectedLote?.precio || 0
   const selectedLoteEsVip = selectedLote?.es_vip || false
+
+  // Precio según moneda seleccionada
+  const getPrecioSegunMoneda = (lote: Lote | undefined, m: TipoMoneda): number => {
+    if (!lote) return 0
+    if (m === 'USD') return lote.precio_usd ?? lote.precio
+    if (m === 'BRL') return lote.precio_reales ?? lote.precio
+    return lote.precio
+  }
+
+  const selectedLotePrecio = getPrecioSegunMoneda(selectedLote, moneda)
   const requierePago = selectedLotePrecio > 0
 
   // El cliente existe y NO estamos editando sus datos (y el DNI no está ya en el evento)
@@ -202,6 +213,10 @@ export function InvitadoFormDialog({
           setVentaExistente(venta)
           setMetodoPago(venta.metodo_pago)
           setObservaciones(venta.observaciones || '')
+          // Inicializar la moneda desde la venta existente
+          if (venta.moneda) {
+            setMoneda(venta.moneda as import('@/types/database').TipoMoneda)
+          }
         }
       })
     }
@@ -229,6 +244,7 @@ export function InvitadoFormDialog({
       setUbicacionExpandida(false)
       setUuidLote('')
       setMetodoPago('')
+      setMoneda('ARS')
       setObservaciones('')
       setProfileImageFile(null)
       setProfileImagePreview('')
@@ -425,6 +441,7 @@ export function InvitadoFormDialog({
   const handleLoteChange = (value: string) => {
     setUuidLote(value)
     setMetodoPago('')
+    setMoneda('ARS')
   }
 
   // Cambiar imagen
@@ -515,16 +532,23 @@ export function InvitadoFormDialog({
         return
       }
 
-      // Actualizar venta si existe y cambió el método de pago
-      if (ventaExistente && metodoPago && (
-        ventaExistente.metodo_pago !== metodoPago ||
-        ventaExistente.observaciones !== (observaciones || null)
-      )) {
+      // Actualizar venta si existe y cambió método de pago, moneda, monto u observaciones
+      const montoActual = selectedLotePrecio
+      const cambioVenta =
+        ventaExistente &&
+        metodoPago &&
+        (ventaExistente.metodo_pago !== metodoPago ||
+          ventaExistente.observaciones !== (observaciones || null) ||
+          ventaExistente.moneda !== moneda ||
+          ventaExistente.monto_total !== montoActual)
+      if (cambioVenta && ventaExistente) {
         try {
           await ventasService.updateVenta(ventaExistente.id, {
             metodo_pago: metodoPago,
-            monto_efectivo: metodoPago === 'efectivo' ? ventaExistente.monto_total : 0,
-            monto_transferencia: metodoPago === 'transferencia' ? ventaExistente.monto_total : 0,
+            monto_total: montoActual,
+            monto_efectivo: metodoPago === 'efectivo' ? montoActual : 0,
+            monto_transferencia: metodoPago === 'transferencia' ? montoActual : 0,
+            moneda,
             observaciones: observaciones || undefined,
           })
         } catch {
@@ -579,6 +603,7 @@ export function InvitadoFormDialog({
             monto_total: selectedLotePrecio,
             monto_efectivo: metodoPago === 'efectivo' ? selectedLotePrecio : 0,
             monto_transferencia: metodoPago === 'transferencia' ? selectedLotePrecio : 0,
+            moneda: moneda,
             observaciones: observaciones || undefined,
           })
           toast.success('Entrada creada y venta registrada')
@@ -599,7 +624,14 @@ export function InvitadoFormDialog({
 
       if (invitadoCreado && onShowQR) {
         const inv = invitadosActualizados.find(i => i.id === invitadoCreado.id)
-        if (inv) await onShowQR(inv)
+        if (inv) {
+          // Inyectar datos de la venta para que el QR muestre la moneda y precio correctos
+          const invConVenta: typeof inv = {
+            ...inv,
+            ventas: [{ moneda, monto_total: selectedLotePrecio }],
+          }
+          await onShowQR(invConVenta)
+        }
       }
     }
   }
@@ -1021,36 +1053,63 @@ export function InvitadoFormDialog({
 
             {/* Lote (siempre visible si DNI verificado y no denegado ni ya en evento, o en modo edición) */}
             {!dniYaEnEvento && ((dniVerificado && !clienteDenegado) || (isEditMode && !dniVerificado)) ? (
-              <div className="space-y-2 pt-4 border-t">
-                <Label htmlFor="lote">Lote *</Label>
-                <Select value={uuidLote} onValueChange={handleLoteChange}>
-                  <SelectTrigger id="lote"><SelectValue placeholder="Seleccionar lote" /></SelectTrigger>
-                  <SelectContent className="max-h-60 overflow-y-auto">
-                    {lotesDisponibles.map((lote) => {
-                      const disponibles = lote.cantidad_maxima - lote.cantidad_actual
-                      const porcentaje = (lote.cantidad_actual / lote.cantidad_maxima) * 100
-                      const estaLleno = disponibles <= 0
-                      const ultimasDisponibles = porcentaje > 50 && porcentaje <= 80
-                      return (
-                        <SelectItem key={lote.id} value={lote.id} disabled={estaLleno}>
-                          <div className="flex items-center gap-2">
-                            <span>{lote.nombre}</span>
-                            {lote.es_vip && <Crown className="h-4 w-4 text-yellow-500" />}
-                            <span className="text-xs text-muted-foreground">
-                              {lote.precio === 0 ? 'GRATIS' : `$${lote.precio.toFixed(2)}`}
-                            </span>
-                            {estaLleno && (
-                              <span className="text-xs bg-red-600 text-white px-1.5 py-0.5 rounded font-bold">SOLD OUT</span>
-                            )}
-                            {ultimasDisponibles && !estaLleno && (
-                              <span className="text-xs text-yellow-600 font-medium">Últimas</span>
-                            )}
-                          </div>
-                        </SelectItem>
-                      )
-                    })}
-                  </SelectContent>
-                </Select>
+              <div className="space-y-3 pt-4 border-t">
+                <div className="space-y-2">
+                  <Label htmlFor="lote">Lote *</Label>
+                  <Select value={uuidLote} onValueChange={handleLoteChange}>
+                    <SelectTrigger id="lote"><SelectValue placeholder="Seleccionar lote" /></SelectTrigger>
+                    <SelectContent className="max-h-60 overflow-y-auto">
+                      {lotesDisponibles.map((lote) => {
+                        const disponibles = lote.cantidad_maxima - lote.cantidad_actual
+                        const porcentaje = (lote.cantidad_actual / lote.cantidad_maxima) * 100
+                        const estaLleno = disponibles <= 0
+                        const ultimasDisponibles = porcentaje > 50 && porcentaje <= 80
+                        return (
+                          <SelectItem key={lote.id} value={lote.id} disabled={estaLleno}>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span>{lote.nombre}</span>
+                              {lote.es_vip && <Crown className="h-4 w-4 text-yellow-500" />}
+                              <span className="text-xs text-muted-foreground">
+                                {lote.precio === 0 ? 'GRATIS' : `$${lote.precio.toFixed(2)}`}
+                              </span>
+                              {lote.precio_usd != null && (
+                                <span className="text-xs text-blue-500">USD {lote.precio_usd.toFixed(2)}</span>
+                              )}
+                              {lote.precio_reales != null && (
+                                <span className="text-xs text-green-600">R$ {lote.precio_reales.toFixed(2)}</span>
+                              )}
+                              {estaLleno && (
+                                <span className="text-xs bg-red-600 text-white px-1.5 py-0.5 rounded font-bold">SOLD OUT</span>
+                              )}
+                              {ultimasDisponibles && !estaLleno && (
+                                <span className="text-xs text-yellow-600 font-medium">Últimas</span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        )
+                      })}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Selector de moneda (solo si el lote tiene precios alternativos) */}
+                {uuidLote && selectedLote && (selectedLote.precio_usd != null || selectedLote.precio_reales != null) && (
+                  <div className="space-y-2">
+                    <Label htmlFor="moneda-lote">Moneda de cobro</Label>
+                    <Select value={moneda} onValueChange={(v) => { setMoneda(v as TipoMoneda); setMetodoPago('') }}>
+                      <SelectTrigger id="moneda-lote"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ARS">{MONEDA_LABELS['ARS']} — ${selectedLote.precio.toFixed(2)}</SelectItem>
+                        {selectedLote.precio_usd != null && (
+                          <SelectItem value="USD">{MONEDA_LABELS['USD']} — USD {selectedLote.precio_usd.toFixed(2)}</SelectItem>
+                        )}
+                        {selectedLote.precio_reales != null && (
+                          <SelectItem value="BRL">{MONEDA_LABELS['BRL']} — R$ {selectedLote.precio_reales.toFixed(2)}</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
               </div>
             ) : null}
 
@@ -1079,7 +1138,7 @@ export function InvitadoFormDialog({
                 <div className="flex items-center justify-between">
                   <h4 className="font-semibold text-sm">Información de Pago</h4>
                   <Badge variant="outline" className="text-base font-bold">
-                    ${(ventaExistente?.monto_total || selectedLotePrecio).toFixed(2)}
+                    {MONEDA_SIMBOLO[moneda]}{selectedLotePrecio.toFixed(2)}
                   </Badge>
                 </div>
                 <div className="space-y-2">

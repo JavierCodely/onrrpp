@@ -55,9 +55,14 @@ export function MesasAdminPage() {
     nombre: '',
     max_personas: '1',
     precio: '0',
+    precio_usd: '',
+    precio_reales: '',
     comision_tipo: 'porcentaje' as 'monto' | 'porcentaje',
     comision_rrpp_monto: '0',
     comision_rrpp_porcentaje: '0',
+    comision_ars: '0',
+    comision_usd: '0',
+    comision_reales: '0',
     tiene_consumicion: false,
     detalle_consumicion: '',
     monto_consumicion: '0',
@@ -86,9 +91,14 @@ export function MesasAdminPage() {
         nombre: mesa.nombre,
         max_personas: mesa.max_personas.toString(),
         precio: mesa.precio.toString(),
+        precio_usd: mesa.precio_usd != null ? mesa.precio_usd.toString() : '',
+        precio_reales: mesa.precio_reales != null ? mesa.precio_reales.toString() : '',
         comision_tipo: mesa.comision_tipo || 'porcentaje',
         comision_rrpp_monto: mesa.comision_rrpp_monto.toString(),
         comision_rrpp_porcentaje: mesa.comision_rrpp_porcentaje.toString(),
+        comision_ars: mesa.comision_ars != null ? mesa.comision_ars.toString() : '0',
+        comision_usd: mesa.comision_usd != null ? mesa.comision_usd.toString() : '0',
+        comision_reales: mesa.comision_reales != null ? mesa.comision_reales.toString() : '0',
         tiene_consumicion: mesa.tiene_consumicion,
         detalle_consumicion: mesa.detalle_consumicion || '',
         monto_consumicion: mesa.monto_consumicion.toString(),
@@ -99,9 +109,14 @@ export function MesasAdminPage() {
         nombre: '',
         max_personas: '1',
         precio: '0',
+        precio_usd: '',
+        precio_reales: '',
         comision_tipo: 'porcentaje',
         comision_rrpp_monto: '0',
         comision_rrpp_porcentaje: '0',
+        comision_ars: '0',
+        comision_usd: '0',
+        comision_reales: '0',
         tiene_consumicion: false,
         detalle_consumicion: '',
         monto_consumicion: '0',
@@ -140,9 +155,14 @@ export function MesasAdminPage() {
         nombre: formData.nombre.trim(),
         max_personas: parseInt(formData.max_personas),
         precio: parseFloat(formData.precio),
+        precio_usd: formData.precio_usd !== '' ? parseFloat(formData.precio_usd) : null,
+        precio_reales: formData.precio_reales !== '' ? parseFloat(formData.precio_reales) : null,
         comision_tipo: formData.comision_tipo,
         comision_rrpp_monto: formData.comision_tipo === 'monto' ? parseFloat(formData.comision_rrpp_monto) : 0,
         comision_rrpp_porcentaje: formData.comision_tipo === 'porcentaje' ? parseFloat(formData.comision_rrpp_porcentaje) : 0,
+        comision_ars: parseFloat(formData.comision_ars) || 0,
+        comision_usd: parseFloat(formData.comision_usd) || 0,
+        comision_reales: parseFloat(formData.comision_reales) || 0,
         tiene_consumicion: formData.tiene_consumicion,
         detalle_consumicion: formData.tiene_consumicion ? formData.detalle_consumicion.trim() : null,
         monto_consumicion: formData.tiene_consumicion ? parseFloat(formData.monto_consumicion) : 0,
@@ -161,9 +181,14 @@ export function MesasAdminPage() {
         nombre: formData.nombre.trim(),
         max_personas: parseInt(formData.max_personas),
         precio: parseFloat(formData.precio),
+        precio_usd: formData.precio_usd !== '' ? parseFloat(formData.precio_usd) : null,
+        precio_reales: formData.precio_reales !== '' ? parseFloat(formData.precio_reales) : null,
         comision_tipo: formData.comision_tipo,
         comision_rrpp_monto: formData.comision_tipo === 'monto' ? parseFloat(formData.comision_rrpp_monto) : 0,
         comision_rrpp_porcentaje: formData.comision_tipo === 'porcentaje' ? parseFloat(formData.comision_rrpp_porcentaje) : 0,
+        comision_ars: parseFloat(formData.comision_ars) || 0,
+        comision_usd: parseFloat(formData.comision_usd) || 0,
+        comision_reales: parseFloat(formData.comision_reales) || 0,
         tiene_consumicion: formData.tiene_consumicion,
         detalle_consumicion: formData.tiene_consumicion ? formData.detalle_consumicion.trim() : null,
         monto_consumicion: formData.tiene_consumicion ? parseFloat(formData.monto_consumicion) : 0,
@@ -348,9 +373,18 @@ export function MesasAdminPage() {
                                   <Users className="h-3 w-3" />
                                   {mesa.escaneos_seguridad_count}/{mesa.max_personas} personas
                                 </div>
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-1 flex-wrap">
                                   <DollarSign className="h-3 w-3" />
-                                  ${mesa.precio.toFixed(2)} · Comisión:{' '}
+                                  <span>${mesa.precio.toFixed(2)} ARS</span>
+                                  {mesa.precio_usd != null && (
+                                    <span className="text-blue-600 dark:text-blue-400">· USD {mesa.precio_usd.toFixed(2)}</span>
+                                  )}
+                                  {mesa.precio_reales != null && (
+                                    <span className="text-green-600 dark:text-green-400">· R$ {mesa.precio_reales.toFixed(2)}</span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  Comisión:{' '}
                                   {mesa.comision_tipo === 'porcentaje'
                                     ? `${mesa.comision_rrpp_porcentaje}%`
                                     : `$${mesa.comision_rrpp_monto}`}
@@ -465,9 +499,9 @@ export function MesasAdminPage() {
               </p>
             </div>
 
-            {/* Precio */}
+            {/* Precio ARS */}
             <div className="space-y-2">
-              <Label htmlFor="precio">Precio ($)</Label>
+              <Label htmlFor="precio">Precio ARS ($)</Label>
               <Input
                 id="precio"
                 type="number"
@@ -477,6 +511,46 @@ export function MesasAdminPage() {
                 required
                 min="0"
               />
+            </div>
+
+            {/* Precios alternativos */}
+            <div className="space-y-3 border rounded-lg p-3 bg-muted/30">
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Precios alternativos (opcional)
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label htmlFor="precio_usd" className="text-sm text-blue-600 dark:text-blue-400">
+                    Precio USD
+                  </Label>
+                  <Input
+                    id="precio_usd"
+                    type="number"
+                    step="0.01"
+                    placeholder="Ej: 10.00"
+                    value={formData.precio_usd}
+                    onChange={(e) => setFormData({ ...formData, precio_usd: e.target.value })}
+                    min="0"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="precio_reales" className="text-sm text-green-600 dark:text-green-400">
+                    Precio Reales (R$)
+                  </Label>
+                  <Input
+                    id="precio_reales"
+                    type="number"
+                    step="0.01"
+                    placeholder="Ej: 50.00"
+                    value={formData.precio_reales}
+                    onChange={(e) => setFormData({ ...formData, precio_reales: e.target.value })}
+                    min="0"
+                  />
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Si se completan, el RRPP podrá elegir la moneda al vender la mesa
+              </p>
             </div>
 
             {/* Comisión */}
@@ -517,6 +591,46 @@ export function MesasAdminPage() {
                   min="0"
                 />
               )}
+
+              <p className="text-xs font-semibold text-muted-foreground mt-2">Comisión por moneda (0 = sin comisión)</p>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="comision_ars" className="text-xs">ARS ($)</Label>
+                  <Input
+                    id="comision_ars"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.comision_ars}
+                    onChange={(e) => setFormData({ ...formData, comision_ars: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="comision_usd" className="text-xs text-blue-600 dark:text-blue-400">USD ($)</Label>
+                  <Input
+                    id="comision_usd"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.comision_usd}
+                    onChange={(e) => setFormData({ ...formData, comision_usd: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="comision_reales" className="text-xs text-green-600 dark:text-green-400">BRL (R$)</Label>
+                  <Input
+                    id="comision_reales"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={formData.comision_reales}
+                    onChange={(e) => setFormData({ ...formData, comision_reales: e.target.value })}
+                    placeholder="0"
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Consumición */}

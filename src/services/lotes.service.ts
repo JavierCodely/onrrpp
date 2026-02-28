@@ -5,11 +5,16 @@ export interface CreateLoteDTO {
   nombre: string
   cantidad_maxima: number
   precio: number
+  precio_usd?: number | null
+  precio_reales?: number | null
   es_vip: boolean
   grupo: GrupoType | null
   comision_tipo: ComisionTipo
   comision_rrpp_monto: number
   comision_rrpp_porcentaje: number
+  comision_ars?: number
+  comision_usd?: number
+  comision_reales?: number
   uuid_evento: string
 }
 
@@ -17,11 +22,16 @@ export interface UpdateLoteDTO {
   nombre?: string
   cantidad_maxima?: number
   precio?: number
+  precio_usd?: number | null
+  precio_reales?: number | null
   es_vip?: boolean
   grupo?: GrupoType | null
   comision_tipo?: ComisionTipo
   comision_rrpp_monto?: number
   comision_rrpp_porcentaje?: number
+  comision_ars?: number
+  comision_usd?: number
+  comision_reales?: number
   activo?: boolean
 }
 
@@ -118,6 +128,9 @@ export const lotesService = {
     }
   },
 
+  /**
+   * Actualización parcial (p.ej. solo activo). Usa update directo de Supabase.
+   */
   async updateLote(id: string, updates: UpdateLoteDTO): Promise<{ data: Lote | null; error: Error | null }> {
     try {
       const { data, error } = await supabase
@@ -132,6 +145,44 @@ export const lotesService = {
       return { data, error: null }
     } catch (error) {
       return { data: null, error: error as Error }
+    }
+  },
+
+  /**
+   * Actualización completa del lote via RPC (SECURITY DEFINER).
+   * Bypasea RLS para garantizar que precio_usd/precio_reales se guarden.
+   */
+  async updateLoteCompleto(
+    id: string,
+    updates: Required<Omit<UpdateLoteDTO, 'activo'>> & { activo?: boolean }
+  ): Promise<{ error: Error | null }> {
+    try {
+      const { data, error } = await supabase.rpc('update_lote', {
+        p_lote_id:             id,
+        p_nombre:              updates.nombre,
+        p_cantidad_maxima:     updates.cantidad_maxima,
+        p_precio:              updates.precio,
+        p_precio_usd:          updates.precio_usd ?? null,
+        p_precio_reales:       updates.precio_reales ?? null,
+        p_es_vip:              updates.es_vip,
+        p_grupo:               updates.grupo ?? null,
+        p_comision_tipo:       updates.comision_tipo,
+        p_comision_rrpp_monto: updates.comision_rrpp_monto,
+        p_comision_porcentaje: updates.comision_rrpp_porcentaje,
+        p_comision_ars:        updates.comision_ars ?? 0,
+        p_comision_usd:        updates.comision_usd ?? 0,
+        p_comision_reales:     updates.comision_reales ?? 0,
+        p_activo:              updates.activo ?? null,
+      })
+
+      if (error) throw error
+
+      const result = data as { success: boolean; error?: string }
+      if (!result.success) throw new Error(result.error || 'Error al actualizar lote')
+
+      return { error: null }
+    } catch (error) {
+      return { error: error as Error }
     }
   },
 

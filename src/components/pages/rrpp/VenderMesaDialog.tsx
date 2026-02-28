@@ -26,13 +26,14 @@ import { useMesaInteraction } from '@/features/mesas/hooks'
 import { clientesService, type ClienteCheckResult } from '@/services/clientes.service'
 import { ubicacionesService } from '@/services/ubicaciones.service'
 import { toast } from 'sonner'
-import type { Mesa } from '@/types/database'
+import type { Mesa, TipoMoneda } from '@/types/database'
+import { MONEDA_LABELS, MONEDA_SIMBOLO } from '@/types/database'
 
 interface VenderMesaDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   mesa: Mesa
-  onSuccess: (qrCode: string, clienteNombre: string | null) => void
+  onSuccess: (qrCode: string, clienteNombre: string | null, precio: number, moneda: string) => void
 }
 
 const DEFAULT_PAIS = 'Argentina'
@@ -68,6 +69,7 @@ export default function VenderMesaDialog({
 
   // Payment states
   const [metodoPago, setMetodoPago] = useState<'efectivo' | 'transferencia' | ''>('')
+  const [moneda, setMoneda] = useState<TipoMoneda>('ARS')
 
   // Form states
   const [nombre, setNombre] = useState('')
@@ -169,6 +171,7 @@ export default function VenderMesaDialog({
       setUbicacionExpandida(false)
       setLocalidades([])
       setMetodoPago('')
+      setMoneda('ARS')
     }
   }, [open])
 
@@ -311,30 +314,44 @@ export default function VenderMesaDialog({
       ? `${nombre.trim()} ${apellido.trim()}`
       : nombre.trim() || null
 
-    const ef = metodoPago === 'efectivo' ? mesa.precio : 0
-    const tr = metodoPago === 'transferencia' ? mesa.precio : 0
+    // Precio según moneda seleccionada
+    const precioSegunMoneda =
+      moneda === 'USD' ? (mesa.precio_usd ?? mesa.precio) :
+      moneda === 'BRL' ? (mesa.precio_reales ?? mesa.precio) :
+      mesa.precio
+
+    const ef = metodoPago === 'efectivo' ? precioSegunMoneda : 0
+    const tr = metodoPago === 'transferencia' ? precioSegunMoneda : 0
 
     await venderMesa(
       mesa.id,
       dniInput.trim(),
       clienteNombre,
       email.trim() || null,
-      null,
+      precioSegunMoneda,
       (qrCode) => {
-        onSuccess(qrCode, clienteNombre)
+        onSuccess(qrCode, clienteNombre, precioSegunMoneda, moneda)
       },
       metodoPago,
       ef,
-      tr
+      tr,
+      moneda
     )
   }
 
+  const precioMostrar =
+    moneda === 'USD' ? (mesa.precio_usd ?? mesa.precio) :
+    moneda === 'BRL' ? (mesa.precio_reales ?? mesa.precio) :
+    mesa.precio
+
+  const simboloMoneda = MONEDA_SIMBOLO[moneda]
+
   const comisionDisplay = mesa.comision_tipo === 'porcentaje'
     ? `${mesa.comision_rrpp_porcentaje}%`
-    : `$${mesa.comision_rrpp_monto}`
+    : `${simboloMoneda}${mesa.comision_rrpp_monto}`
 
   const comisionCalculada = mesa.comision_tipo === 'porcentaje'
-    ? (mesa.precio * mesa.comision_rrpp_porcentaje / 100)
+    ? (precioMostrar * mesa.comision_rrpp_porcentaje / 100)
     : mesa.comision_rrpp_monto
 
   return (
@@ -626,6 +643,25 @@ export default function VenderMesaDialog({
               </div>
             )}
 
+            {/* Selector de moneda (solo si la mesa tiene precios alternativos) */}
+            {dniVerificado && !clienteDenegado && (mesa.precio_usd != null || mesa.precio_reales != null) && (
+              <div className="space-y-2">
+                <Label htmlFor="moneda-mesa">Moneda de cobro</Label>
+                <Select value={moneda} onValueChange={(v) => { setMoneda(v as TipoMoneda); setMetodoPago('') }}>
+                  <SelectTrigger id="moneda-mesa"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ARS">{MONEDA_LABELS['ARS']} — ${mesa.precio.toFixed(2)}</SelectItem>
+                    {mesa.precio_usd != null && (
+                      <SelectItem value="USD">{MONEDA_LABELS['USD']} — USD {mesa.precio_usd.toFixed(2)}</SelectItem>
+                    )}
+                    {mesa.precio_reales != null && (
+                      <SelectItem value="BRL">{MONEDA_LABELS['BRL']} — R$ {mesa.precio_reales.toFixed(2)}</SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {/* Payment method */}
             {dniVerificado && !clienteDenegado && (
               <div className="space-y-3">
@@ -657,12 +693,12 @@ export default function VenderMesaDialog({
                 <h4 className="font-semibold text-sm">Resumen de venta</h4>
                 <div className="text-sm space-y-1">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Precio:</span>
-                    <span className="font-medium">${mesa.precio.toFixed(2)}</span>
+                    <span className="text-muted-foreground">Precio ({MONEDA_LABELS[moneda]}):</span>
+                    <span className="font-medium">{simboloMoneda}{precioMostrar.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Comisión ({comisionDisplay}):</span>
-                    <span className="font-medium">${comisionCalculada.toFixed(2)}</span>
+                    <span className="font-medium">{simboloMoneda}{comisionCalculada.toFixed(2)}</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Máx. escaneos QR:</span>

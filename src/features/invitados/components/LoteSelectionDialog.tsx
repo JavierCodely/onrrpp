@@ -115,13 +115,23 @@ export function LoteSelectionDialog({
                             )}
                           </div>
 
-                          <div className="flex items-center gap-4 text-sm">
+                          <div className="flex items-center gap-4 text-sm flex-wrap">
                             <div className="flex items-center gap-2">
                               <DollarSign className="h-4 w-4 text-muted-foreground" />
                               <span className="font-medium">
                                 {lote.precio === 0 ? 'GRATIS' : `$${lote.precio.toFixed(2)}`}
                               </span>
                             </div>
+                            {lote.precio_usd != null && (
+                              <span className="text-xs text-blue-500 font-medium">
+                                USD {lote.precio_usd.toFixed(2)}
+                              </span>
+                            )}
+                            {lote.precio_reales != null && (
+                              <span className="text-xs text-green-600 font-medium">
+                                R$ {lote.precio_reales.toFixed(2)}
+                              </span>
+                            )}
                           </div>
 
                           {/* Barra de progreso */}

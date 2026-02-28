@@ -3,6 +3,19 @@ export type MetodoPago = 'efectivo' | 'transferencia' | 'mixto'
 export type ComisionTipo = 'monto' | 'porcentaje'
 export type GrupoType = 'A' | 'B' | 'C' | 'D'
 export type RazonRechazoType = 'codigo_vestimenta' | 'comportamiento_inadecuado' | 'otro'
+export type TipoMoneda = 'ARS' | 'USD' | 'BRL'
+
+export const MONEDA_LABELS: Record<TipoMoneda, string> = {
+  ARS: 'Pesos ($)',
+  USD: 'Dólares (USD)',
+  BRL: 'Reales (R$)',
+}
+
+export const MONEDA_SIMBOLO: Record<TipoMoneda, string> = {
+  ARS: '$',
+  USD: 'USD',
+  BRL: 'R$',
+}
 
 export interface Personal {
   id: string
@@ -48,11 +61,16 @@ export interface Lote {
   cantidad_maxima: number
   cantidad_actual: number
   precio: number
+  precio_usd: number | null
+  precio_reales: number | null
   es_vip: boolean
   grupo: GrupoType | null
   comision_tipo: ComisionTipo
   comision_rrpp_monto: number
   comision_rrpp_porcentaje: number
+  comision_ars: number
+  comision_usd: number
+  comision_reales: number
   uuid_evento: string
   activo: boolean
   created_at: string
@@ -118,6 +136,7 @@ export interface Venta {
   monto_total: number
   monto_efectivo: number
   monto_transferencia: number
+  moneda: TipoMoneda
   observaciones: string | null
   created_at: string
   updated_at: string
@@ -136,6 +155,12 @@ export interface VentaConDetalles extends Venta {
     nombre: string
     precio: number
     es_vip: boolean
+    comision_tipo: ComisionTipo
+    comision_rrpp_monto: number
+    comision_rrpp_porcentaje: number
+    comision_ars: number
+    comision_usd: number
+    comision_reales: number
   }
   rrpp: {
     nombre: string
@@ -247,12 +272,17 @@ export interface Mesa {
   uuid_club: string
   estado: EstadoMesa
   precio: number
+  precio_usd: number | null
+  precio_reales: number | null
   max_personas: number
   escaneos_seguridad_count: number
   id_rrpp: string | null
   comision_tipo: ComisionTipo | null
   comision_rrpp_monto: number
   comision_rrpp_porcentaje: number
+  comision_ars: number
+  comision_usd: number
+  comision_reales: number
   tiene_consumicion: boolean
   monto_consumicion: number
   detalle_consumicion: string | null
@@ -285,6 +315,7 @@ export interface VentaMesa {
   metodo_pago?: string
   monto_efectivo?: number
   monto_transferencia?: number
+  moneda: TipoMoneda
   qr_code: string
   nombre_cliente?: string
   apellido_cliente?: string

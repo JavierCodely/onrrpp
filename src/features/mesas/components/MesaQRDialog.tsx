@@ -3,6 +3,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Calendar, DollarSign, Users, Wine, X } from 'lucide-react'
+import { MONEDA_SIMBOLO } from '@/types/database'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { QRCodeSVG } from 'qrcode.react'
@@ -16,6 +17,7 @@ interface MesaQRDialogProps {
   sectorNombre?: string
   clienteNombre?: string | null
   precio?: number
+  moneda?: string
   maxPersonas?: number
   detalleConsumicion?: string | null
   eventoBannerUrl?: string | null
@@ -32,6 +34,7 @@ export function MesaQRDialog({
   sectorNombre,
   clienteNombre,
   precio,
+  moneda = 'ARS',
   maxPersonas,
   detalleConsumicion,
   eventoBannerUrl,
@@ -40,6 +43,8 @@ export function MesaQRDialog({
   clubNombre,
 }: MesaQRDialogProps) {
   if (!qrCode) return null
+
+  const simbolo = MONEDA_SIMBOLO[moneda as keyof typeof MONEDA_SIMBOLO] ?? '$'
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -111,7 +116,10 @@ export function MesaQRDialog({
                 <div className="flex items-center gap-1 text-sm">
                   <DollarSign className="h-3 w-3" />
                   {precio != null && (
-                    <span className="font-medium">${precio.toFixed(2)}</span>
+                    <span className={`font-medium${moneda === 'USD' ? ' text-blue-600' : moneda === 'BRL' ? ' text-green-600' : ''}`}>
+                      {simbolo}{precio.toFixed(2)}
+                      {moneda !== 'ARS' && <span className="ml-1 text-xs opacity-75">{moneda}</span>}
+                    </span>
                   )}
                 </div>
               </div>

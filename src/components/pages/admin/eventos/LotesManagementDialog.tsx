@@ -116,15 +116,21 @@ export function LotesManagementDialog({
                           </div>
 
                           <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div className="flex items-center gap-2">
-                              <DollarSign className="h-4 w-4 text-muted-foreground" />
-                              <span>
+                            <div className="flex items-start gap-2">
+                              <DollarSign className="h-4 w-4 text-muted-foreground mt-0.5" />
+                              <div className="space-y-0.5">
                                 {lote.precio === 0 ? (
                                   <span className="text-green-600 font-medium">GRATIS</span>
                                 ) : (
-                                  <span className="font-medium">${lote.precio.toFixed(2)}</span>
+                                  <p className="font-medium">${lote.precio.toFixed(2)}</p>
                                 )}
-                              </span>
+                                {lote.precio_usd != null && (
+                                  <p className="text-xs text-muted-foreground">USD {lote.precio_usd.toFixed(2)}</p>
+                                )}
+                                {lote.precio_reales != null && (
+                                  <p className="text-xs text-muted-foreground">R$ {lote.precio_reales.toFixed(2)}</p>
+                                )}
+                              </div>
                             </div>
                             <div className="flex items-center gap-2">
                               <Users className="h-4 w-4 text-muted-foreground" />

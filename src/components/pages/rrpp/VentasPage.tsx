@@ -3,7 +3,8 @@ import { useAuthStore } from '@/stores/auth.store'
 import { ventasService, type VentasStats } from '@/services/ventas.service'
 import { eventosService } from '@/services/eventos.service'
 import { supabase } from '@/lib/supabase'
-import type { VentaConDetalles, Evento } from '@/types/database'
+import type { VentaConDetalles, Evento, TipoMoneda } from '@/types/database'
+import { MONEDA_SIMBOLO } from '@/types/database'
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js'
 import { invitadosService } from '@/services/invitados.service'
 import { ventasMesasService } from '@/services/ventas-mesas.service'
@@ -237,10 +238,68 @@ export function VentasPage() {
       </div>
 
       {selectedEvento && stats && (() => {
-        const mesasTotalVenta = ventasMesas.reduce((sum, vm) => sum + vm.precio_venta, 0)
-        const mesasTotalComision = ventasMesas.reduce((sum, vm) => sum + vm.comision_calculada, 0)
-        const mesasTotalEfectivo = ventasMesas.reduce((sum, vm) => sum + (vm.monto_efectivo || 0), 0)
-        const mesasTotalTransferencia = ventasMesas.reduce((sum, vm) => sum + (vm.monto_transferencia || 0), 0)
+        const monedaOf = (m?: string | null) => ((m || 'ARS') as TipoMoneda)
+        const formatMonto = (m: TipoMoneda, n: number) => (
+          m === 'ARS' ? formatCurrency(n) : `${MONEDA_SIMBOLO[m]}${n.toFixed(2)}`
+        )
+
+        // Separar ventas de lotes por moneda
+        const ventasARS = ventas.filter(v => !v.moneda || v.moneda === 'ARS')
+        const ventasUSD = ventas.filter(v => v.moneda === 'USD')
+        const ventasBRL = ventas.filter(v => v.moneda === 'BRL')
+
+        // Separar ventas de mesas por moneda
+        const mesasARS = ventasMesas.filter(m => !m.moneda || m.moneda === 'ARS')
+        const mesasUSD = ventasMesas.filter(m => m.moneda === 'USD')
+        const mesasBRL = ventasMesas.filter(m => m.moneda === 'BRL')
+
+        // Totales por moneda - Efectivo
+        const efectARS = ventasARS.reduce((s, v) => s + v.monto_efectivo, 0)    + mesasARS.reduce((s, m) => s + (m.monto_efectivo || 0), 0)
+        const efectUSD = ventasUSD.reduce((s, v) => s + v.monto_efectivo, 0)    + mesasUSD.reduce((s, m) => s + (m.monto_efectivo || 0), 0)
+        const efectBRL = ventasBRL.reduce((s, v) => s + v.monto_efectivo, 0)    + mesasBRL.reduce((s, m) => s + (m.monto_efectivo || 0), 0)
+
+        // Totales por moneda - Transferencia
+        const transfARS = ventasARS.reduce((s, v) => s + v.monto_transferencia, 0) + mesasARS.reduce((s, m) => s + (m.monto_transferencia || 0), 0)
+        const transfUSD = ventasUSD.reduce((s, v) => s + v.monto_transferencia, 0) + mesasUSD.reduce((s, m) => s + (m.monto_transferencia || 0), 0)
+        const transfBRL = ventasBRL.reduce((s, v) => s + v.monto_transferencia, 0) + mesasBRL.reduce((s, m) => s + (m.monto_transferencia || 0), 0)
+
+        // Totales por moneda - Total cobrado
+        const totalARS = ventasARS.reduce((s, v) => s + v.monto_total, 0)       + mesasARS.reduce((s, m) => s + m.precio_venta, 0)
+        const totalUSD = ventasUSD.reduce((s, v) => s + v.monto_total, 0)       + mesasUSD.reduce((s, m) => s + m.precio_venta, 0)
+        const totalBRL = ventasBRL.reduce((s, v) => s + v.monto_total, 0)       + mesasBRL.reduce((s, m) => s + m.precio_venta, 0)
+
+        // Comisiones mesas por moneda
+        const comisARS = mesasARS.reduce((s, m) => s + m.comision_calculada, 0)
+        const comisUSD = mesasUSD.reduce((s, m) => s + m.comision_calculada, 0)
+        const comisBRL = mesasBRL.reduce((s, m) => s + m.comision_calculada, 0)
+
+        // Comisiones lotes por moneda (no sumar monedas entre sí)
+        const comisLotesPorMoneda = ventas.reduce((acc, v) => {
+          const mon = monedaOf(v.moneda)
+          const lote = v.lote
+          if (!lote) return acc
+
+          let com = 0
+          if (lote.comision_tipo === 'porcentaje') {
+            com = Number(v.monto_total) * (Number(lote.comision_rrpp_porcentaje) / 100)
+          } else {
+            com = mon === 'ARS'
+              ? Number(lote.comision_ars ?? lote.comision_rrpp_monto ?? 0)
+              : mon === 'USD'
+                ? Number(lote.comision_usd ?? 0)
+                : Number(lote.comision_reales ?? 0)
+          }
+
+          acc[mon] += com
+          return acc
+        }, { ARS: 0, USD: 0, BRL: 0 } as Record<TipoMoneda, number>)
+
+        const comisLotesARS = comisLotesPorMoneda.ARS
+        const comisLotesUSD = comisLotesPorMoneda.USD
+        const comisLotesBRL = comisLotesPorMoneda.BRL
+
+        const tieneUSD = totalUSD > 0 || transfUSD > 0 || efectUSD > 0
+        const tieneBRL = totalBRL > 0 || transfBRL > 0 || efectBRL > 0
 
         return (
         <>
@@ -248,52 +307,76 @@ export function VentasPage() {
           <div className="grid gap-4 md:grid-cols-3">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Efectivo
-                </CardTitle>
+                <CardTitle className="text-sm font-medium">Total Efectivo</CardTitle>
                 <div className="h-4 w-4 rounded-full bg-green-500" />
               </CardHeader>
-              <CardContent>
-                <div className="text-xl font-bold text-green-600 dark:text-green-400">
-                  {formatCurrency(stats.monto_total_efectivo + mesasTotalEfectivo)}
+              <CardContent className="space-y-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">ARS</p>
+                  <p className="text-xl font-bold text-green-600 dark:text-green-400">{formatCurrency(efectARS)}</p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Lotes: {formatCurrency(stats.monto_total_efectivo)} + Mesas: {formatCurrency(mesasTotalEfectivo)}
-                </p>
+                {tieneUSD && (
+                  <div className="pt-1 border-t">
+                    <p className="text-xs text-blue-500">USD</p>
+                    <p className="text-lg font-bold text-blue-600 dark:text-blue-400">USD {efectUSD.toFixed(2)}</p>
+                  </div>
+                )}
+                {tieneBRL && (
+                  <div className="pt-1 border-t">
+                    <p className="text-xs text-green-500">BRL</p>
+                    <p className="text-lg font-bold text-green-600 dark:text-green-400">R$ {efectBRL.toFixed(2)}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Transferencia
-                </CardTitle>
+                <CardTitle className="text-sm font-medium">Total Transferencia</CardTitle>
                 <div className="h-4 w-4 rounded-full bg-blue-500" />
               </CardHeader>
-              <CardContent>
-                <div className="text-xl font-bold text-blue-600 dark:text-blue-400">
-                  {formatCurrency(stats.monto_total_transferencia + mesasTotalTransferencia)}
+              <CardContent className="space-y-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">ARS</p>
+                  <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(transfARS)}</p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Lotes: {formatCurrency(stats.monto_total_transferencia)} + Mesas: {formatCurrency(mesasTotalTransferencia)}
-                </p>
+                {tieneUSD && (
+                  <div className="pt-1 border-t">
+                    <p className="text-xs text-blue-500">USD</p>
+                    <p className="text-lg font-bold text-blue-600 dark:text-blue-400">USD {transfUSD.toFixed(2)}</p>
+                  </div>
+                )}
+                {tieneBRL && (
+                  <div className="pt-1 border-t">
+                    <p className="text-xs text-green-500">BRL</p>
+                    <p className="text-lg font-bold text-green-600 dark:text-green-400">R$ {transfBRL.toFixed(2)}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total a Adeudar
-                </CardTitle>
+                <CardTitle className="text-sm font-medium">Total a Adeudar</CardTitle>
                 <div className="h-4 w-4 rounded-full bg-red-500" />
               </CardHeader>
-              <CardContent>
-                <div className="text-xl font-bold text-red-600 dark:text-red-400">
-                  {formatCurrency(stats.monto_total_general + mesasTotalVenta)}
+              <CardContent className="space-y-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">ARS</p>
+                  <p className="text-xl font-bold text-red-600 dark:text-red-400">{formatCurrency(totalARS)}</p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Total cobrado (lotes + mesas)
-                </p>
+                {tieneUSD && (
+                  <div className="pt-1 border-t">
+                    <p className="text-xs text-blue-500">USD</p>
+                    <p className="text-lg font-bold text-blue-600 dark:text-blue-400">USD {totalUSD.toFixed(2)}</p>
+                  </div>
+                )}
+                {tieneBRL && (
+                  <div className="pt-1 border-t">
+                    <p className="text-xs text-green-500">BRL</p>
+                    <p className="text-lg font-bold text-green-600 dark:text-green-400">R$ {totalBRL.toFixed(2)}</p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -302,9 +385,7 @@ export function VentasPage() {
           <div className="grid gap-4 md:grid-cols-2">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Total Vendidos
-                </CardTitle>
+                <CardTitle className="text-sm font-medium">Total Vendidos</CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
@@ -317,97 +398,169 @@ export function VentasPage() {
 
             <Card className="border-yellow-500 bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-950/30 dark:to-orange-950/30">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  Tu Comisión Total
-                </CardTitle>
+                <CardTitle className="text-sm font-medium">Tu Comisión Total</CardTitle>
                 <TrendingUp className="h-4 w-4 text-yellow-600 dark:text-yellow-400" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-                  {formatCurrency((stats.comision_total !== undefined ? stats.comision_total : 0) + mesasTotalComision)}
+              <CardContent className="space-y-2">
+                <div>
+                  <p className="text-xs text-muted-foreground">ARS</p>
+                  <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                    {formatCurrency(comisLotesARS + comisARS)}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Lotes: {formatCurrency(comisLotesARS)} + Mesas: {formatCurrency(comisARS)}
+                  </p>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Lotes: {formatCurrency(stats.comision_total || 0)} + Mesas: {formatCurrency(mesasTotalComision)}
-                </p>
+                {(comisLotesUSD + comisUSD) > 0 && (
+                  <div className="pt-1 border-t">
+                    <p className="text-xs text-blue-500">USD</p>
+                    <p className="text-lg font-bold text-blue-600 dark:text-blue-400">
+                      USD {(comisLotesUSD + comisUSD).toFixed(2)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Lotes: USD {comisLotesUSD.toFixed(2)} + Mesas: USD {comisUSD.toFixed(2)}
+                    </p>
+                  </div>
+                )}
+                {(comisLotesBRL + comisBRL) > 0 && (
+                  <div className="pt-1 border-t">
+                    <p className="text-xs text-green-500">BRL</p>
+                    <p className="text-lg font-bold text-green-600 dark:text-green-400">
+                      R$ {(comisLotesBRL + comisBRL).toFixed(2)}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Lotes: R$ {comisLotesBRL.toFixed(2)} + Mesas: R$ {comisBRL.toFixed(2)}
+                    </p>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Comisiones por lote */}
-          {stats.ventas_por_lote && stats.ventas_por_lote.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Tag className="h-5 w-5" />
-                  Comisiones por Lote
-                </CardTitle>
-                <CardDescription>
-                  Detalle de tus ganancias por cada tipo de lote vendido
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {stats.ventas_por_lote.map((lote) => (
-                    <div
-                      key={lote.uuid_lote}
-                      className="p-4 border rounded-lg hover:bg-muted/50 transition-colors space-y-3"
-                    >
-                      {/* Header del lote */}
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <h4 className="font-semibold text-base">
-                              {lote.lote_nombre}
-                            </h4>
-                            {lote.lote_es_vip ? (
-                              <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white gap-1 text-xs">
-                                <Crown className="h-3 w-3" />
-                                VIP
-                              </Badge>
-                            ) : (
-                              <Badge variant="secondary" className="gap-1 text-xs">
-                                <Ticket className="h-3 w-3" />
-                                Normal
-                              </Badge>
+          {/* Comisiones por lote (separadas por moneda) */}
+          {ventas.length > 0 && (() => {
+            const porLote = ventas.reduce((acc, v) => {
+              if (!v.uuid_lote || !v.lote) return acc
+              const mon = monedaOf(v.moneda)
+              const key = v.uuid_lote
+
+              if (!acc[key]) {
+                acc[key] = {
+                  uuid_lote: key,
+                  lote_nombre: v.lote.nombre,
+                  lote_es_vip: v.lote.es_vip,
+                  lote_precio: v.lote.precio,
+                  comision_tipo: v.lote.comision_tipo,
+                  comision_rrpp_monto: v.lote.comision_rrpp_monto,
+                  comision_rrpp_porcentaje: v.lote.comision_rrpp_porcentaje,
+                  comision_ars: v.lote.comision_ars,
+                  comision_usd: v.lote.comision_usd,
+                  comision_reales: v.lote.comision_reales,
+                  cantidad_ventas: 0,
+                  comision_por_moneda: { ARS: 0, USD: 0, BRL: 0 } as Record<TipoMoneda, number>,
+                }
+              }
+
+              const row = acc[key]
+              row.cantidad_ventas += 1
+
+              let com = 0
+              if (row.comision_tipo === 'porcentaje') {
+                com = Number(v.monto_total) * (Number(row.comision_rrpp_porcentaje) / 100)
+              } else {
+                com = mon === 'ARS'
+                  ? Number(row.comision_ars ?? row.comision_rrpp_monto ?? 0)
+                  : mon === 'USD'
+                    ? Number(row.comision_usd ?? 0)
+                    : Number(row.comision_reales ?? 0)
+              }
+
+              row.comision_por_moneda[mon] += com
+              return acc
+            }, {} as Record<string, any>)
+
+            const lotesList = Object.values(porLote).sort((a: any, b: any) => (a.lote_nombre || '').localeCompare(b.lote_nombre || ''))
+            if (lotesList.length === 0) return null
+
+            return (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Tag className="h-5 w-5" />
+                    Comisiones por Lote
+                  </CardTitle>
+                  <CardDescription>
+                    Detalle de tus ganancias por cada tipo de lote vendido (sin sumar monedas distintas)
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {lotesList.map((lote: any) => (
+                      <div
+                        key={lote.uuid_lote}
+                        className="p-4 border rounded-lg hover:bg-muted/50 transition-colors space-y-3"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              <h4 className="font-semibold text-base">{lote.lote_nombre}</h4>
+                              {lote.lote_es_vip ? (
+                                <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white gap-1 text-xs">
+                                  <Crown className="h-3 w-3" />
+                                  VIP
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="gap-1 text-xs">
+                                  <Ticket className="h-3 w-3" />
+                                  Normal
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0 space-y-0.5">
+                            <div className="text-xl md:text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                              {formatCurrency(Number(lote.comision_por_moneda.ARS || 0))}
+                              <span className="ml-1 text-xs text-muted-foreground font-normal">ARS</span>
+                            </div>
+                            {Number(lote.comision_por_moneda.USD || 0) > 0 && (
+                              <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                                USD {Number(lote.comision_por_moneda.USD).toFixed(2)}
+                              </div>
+                            )}
+                            {Number(lote.comision_por_moneda.BRL || 0) > 0 && (
+                              <div className="text-sm font-semibold text-green-600 dark:text-green-400">
+                                R$ {Number(lote.comision_por_moneda.BRL).toFixed(2)}
+                              </div>
                             )}
                           </div>
                         </div>
-                        <div className="text-right shrink-0">
-                          <div className="text-xl md:text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-                            {formatCurrency(Number(lote.comision_total))}
-                          </div>
-                          <p className="text-xs text-muted-foreground">
-                            Total
-                          </p>
-                        </div>
-                      </div>
 
-                      {/* Detalles del lote */}
-                      <div className="grid grid-cols-2 gap-2 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">Ventas:</span>
-                          <span className="ml-1 font-medium">{lote.cantidad_ventas}</span>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Precio:</span>
-                          <span className="ml-1 font-medium">{formatCurrency(Number(lote.lote_precio))}</span>
-                        </div>
-                        <div className="col-span-2">
-                          <span className="text-muted-foreground">Comisión:</span>
-                          <span className="ml-1 font-medium text-yellow-600 dark:text-yellow-400">
-                            {lote.comision_tipo === 'monto'
-                              ? `${formatCurrency(Number(lote.comision_rrpp_monto))} por venta`
-                              : `${Number(lote.comision_rrpp_porcentaje).toFixed(2)}%`
-                            }
-                          </span>
+                        <div className="grid grid-cols-2 gap-2 text-sm">
+                          <div>
+                            <span className="text-muted-foreground">Ventas:</span>
+                            <span className="ml-1 font-medium">{lote.cantidad_ventas}</span>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground">Precio (ARS):</span>
+                            <span className="ml-1 font-medium">{formatCurrency(Number(lote.lote_precio))}</span>
+                          </div>
+                          <div className="col-span-2">
+                            <span className="text-muted-foreground">Comisión:</span>
+                            <span className="ml-1 font-medium text-yellow-600 dark:text-yellow-400">
+                              {lote.comision_tipo === 'monto'
+                                ? `ARS ${formatCurrency(Number(lote.comision_ars ?? lote.comision_rrpp_monto ?? 0))} · USD ${Number(lote.comision_usd ?? 0).toFixed(2)} · BRL ${Number(lote.comision_reales ?? 0).toFixed(2)}`
+                                : `${Number(lote.comision_rrpp_porcentaje).toFixed(2)}%`
+                              }
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )
+          })()}
 
           {/* Ventas de Mesas */}
           {ventasMesas.length > 0 && (
@@ -451,10 +604,22 @@ export function VentasPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-right font-bold">
-                            {formatCurrency(vm.precio_venta)}
+                            <div className="flex items-center justify-end gap-1.5">
+                              {vm.moneda && vm.moneda !== 'ARS' && (
+                                <Badge className={vm.moneda === 'USD' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 text-xs' : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs'}>
+                                  {vm.moneda}
+                                </Badge>
+                              )}
+                              <span className={vm.moneda === 'USD' ? 'text-blue-600 dark:text-blue-400' : vm.moneda === 'BRL' ? 'text-green-600 dark:text-green-400' : ''}>
+                                {MONEDA_SIMBOLO[vm.moneda ?? 'ARS']}{vm.precio_venta.toFixed(2)}
+                              </span>
+                            </div>
                           </TableCell>
                           <TableCell className="text-right text-yellow-600 dark:text-yellow-400 font-medium">
-                            {formatCurrency(vm.comision_calculada)}
+                            {vm.moneda && vm.moneda !== 'ARS'
+                              ? `${MONEDA_SIMBOLO[vm.moneda]}${vm.comision_calculada.toFixed(2)}`
+                              : formatCurrency(vm.comision_calculada)
+                            }
                           </TableCell>
                           <TableCell className="text-sm text-muted-foreground">
                             {formatFecha(vm.created_at)}
@@ -478,11 +643,25 @@ export function VentasPage() {
                             <h3 className="font-semibold">{vm.cliente_nombre || 'Sin nombre'}</h3>
                             <p className="text-xs text-muted-foreground truncate max-w-[180px]">DNI: {vm.cliente_dni}</p>
                           </div>
-                          <span className="text-base font-bold">{formatCurrency(vm.precio_venta)}</span>
+                          <div className="flex items-center gap-1.5">
+                            {vm.moneda && vm.moneda !== 'ARS' && (
+                              <Badge className={vm.moneda === 'USD' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 text-xs' : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs'}>
+                                {vm.moneda}
+                              </Badge>
+                            )}
+                            <span className={`text-base font-bold${vm.moneda === 'USD' ? ' text-blue-600 dark:text-blue-400' : vm.moneda === 'BRL' ? ' text-green-600 dark:text-green-400' : ''}`}>
+                              {MONEDA_SIMBOLO[vm.moneda ?? 'ARS']}{vm.precio_venta.toFixed(2)}
+                            </span>
+                          </div>
                         </div>
                         <div className="flex items-center justify-between pt-2 border-t">
                           <span className="text-xs text-muted-foreground">
-                            Comisión: <span className="text-yellow-600 dark:text-yellow-400 font-medium">{formatCurrency(vm.comision_calculada)}</span>
+                            Comisión: <span className="text-yellow-600 dark:text-yellow-400 font-medium">
+                              {vm.moneda && vm.moneda !== 'ARS'
+                                ? `${MONEDA_SIMBOLO[vm.moneda]}${vm.comision_calculada.toFixed(2)}`
+                                : formatCurrency(vm.comision_calculada)
+                              }
+                            </span>
                           </span>
                           <span className="text-xs text-muted-foreground">
                             {formatFecha(vm.created_at)}
@@ -502,8 +681,17 @@ export function VentasPage() {
                     </div>
                     <div>
                       <div className="text-sm text-muted-foreground">Comisión Mesas</div>
-                      <div className="text-xl font-bold text-yellow-600 dark:text-yellow-400">
-                        {formatCurrency(ventasMesas.reduce((sum, vm) => sum + vm.comision_calculada, 0))}
+                      <div className="space-y-0.5">
+                        <div className="text-xl font-bold text-yellow-600 dark:text-yellow-400">
+                          {formatCurrency(comisARS)}
+                          <span className="ml-1 text-xs text-muted-foreground font-normal">ARS</span>
+                        </div>
+                        {comisUSD > 0 && (
+                          <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">USD {comisUSD.toFixed(2)}</div>
+                        )}
+                        {comisBRL > 0 && (
+                          <div className="text-sm font-semibold text-green-600 dark:text-green-400">R$ {comisBRL.toFixed(2)}</div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -585,7 +773,7 @@ export function VentasPage() {
                             <TableCell className="text-right text-sm">
                               {venta.monto_efectivo > 0 ? (
                                 <span className="text-green-600 font-medium">
-                                  {formatCurrency(Number(venta.monto_efectivo))}
+                                  {formatMonto(monedaOf(venta.moneda), Number(venta.monto_efectivo))}
                                 </span>
                               ) : (
                                 <span className="text-muted-foreground">-</span>
@@ -594,14 +782,14 @@ export function VentasPage() {
                             <TableCell className="text-right text-sm">
                               {venta.monto_transferencia > 0 ? (
                                 <span className="text-blue-600 font-medium">
-                                  {formatCurrency(Number(venta.monto_transferencia))}
+                                  {formatMonto(monedaOf(venta.moneda), Number(venta.monto_transferencia))}
                                 </span>
                               ) : (
                                 <span className="text-muted-foreground">-</span>
                               )}
                             </TableCell>
                             <TableCell className="text-right text-sm font-bold">
-                              {formatCurrency(Number(venta.monto_total))}
+                              {formatMonto(monedaOf(venta.moneda), Number(venta.monto_total))}
                             </TableCell>
                             <TableCell className="text-sm text-muted-foreground">
                               {formatFecha(venta.created_at)}
@@ -692,13 +880,13 @@ export function VentasPage() {
                               <div>
                                 <p className="text-xs text-muted-foreground">Efectivo</p>
                                 <p className="text-sm font-medium text-green-600">
-                                  {formatCurrency(Number(venta.monto_efectivo))}
+                                  {formatMonto(monedaOf(venta.moneda), Number(venta.monto_efectivo))}
                                 </p>
                               </div>
                               <div>
                                 <p className="text-xs text-muted-foreground">Transferencia</p>
                                 <p className="text-sm font-medium text-blue-600">
-                                  {formatCurrency(Number(venta.monto_transferencia))}
+                                  {formatMonto(monedaOf(venta.moneda), Number(venta.monto_transferencia))}
                                 </p>
                               </div>
                             </div>
@@ -706,7 +894,7 @@ export function VentasPage() {
                             <div className="flex items-center justify-between pt-2 border-t">
                               <span className="text-xs font-bold">Total</span>
                               <span className="text-base font-bold">
-                                {formatCurrency(Number(venta.monto_total))}
+                                {formatMonto(monedaOf(venta.moneda), Number(venta.monto_total))}
                               </span>
                             </div>
 

@@ -12,9 +12,11 @@ import {
   Ticket,
 } from 'lucide-react'
 import type { Evento } from '@/types/database'
+import type { MesaEventoStats } from './useEventosData'
 
 interface EventosCardsProps {
   eventos: Evento[]
+  mesaStats: Record<string, MesaEventoStats>
   onOpenLotesDialog: (evento: Evento) => void
   onToggleEstado: (evento: Evento) => void
   onEdit: (evento: Evento) => void
@@ -25,6 +27,7 @@ interface EventosCardsProps {
 
 export function EventosCards({
   eventos,
+  mesaStats,
   onOpenLotesDialog,
   onToggleEstado,
   onEdit,
@@ -76,16 +79,39 @@ export function EventosCards({
                 </div>
               </div>
 
-              <div className="flex items-center gap-4 text-sm">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <span>{evento.total_invitados} invitados</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <UserCheck className="h-4 w-4 text-green-600" />
-                  <span>{evento.total_ingresados} ingresados</span>
-                </div>
-              </div>
+              {(() => {
+                const mesas = mesaStats[evento.id]
+                const totalInvitados = evento.total_invitados + (mesas?.capacidad ?? 0)
+                const totalIngresados = evento.total_ingresados + (mesas?.scans ?? 0)
+                return (
+                  <div className="space-y-1 text-sm">
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <span>{totalInvitados} invitados</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <UserCheck className="h-4 w-4 text-green-600" />
+                        <span>{totalIngresados} ingresados</span>
+                      </div>
+                    </div>
+                    {mesas && (mesas.capacidad > 0 || mesas.scans > 0) && (
+                      <div className="text-xs text-muted-foreground ml-6 flex flex-col gap-0.5">
+                        {mesas.capacidad > 0 && (
+                          <span>
+                            {evento.total_invitados} inv + {mesas.capacidad} por mesas
+                          </span>
+                        )}
+                        {mesas.scans > 0 && (
+                          <span>
+                            {evento.total_ingresados} ing + {mesas.scans} por mesas
+                          </span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
 
               {/* Acciones */}
               <div className="flex items-center gap-2 pt-2 border-t">

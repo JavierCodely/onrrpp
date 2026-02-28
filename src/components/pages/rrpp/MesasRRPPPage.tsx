@@ -32,6 +32,8 @@ export function MesasRRPPPage() {
   const [qrDialogOpen, setQrDialogOpen] = useState(false)
   const [qrCode, setQrCode] = useState<string>('')
   const [qrClienteNombre, setQrClienteNombre] = useState<string | null>(null)
+  const [qrPrecio, setQrPrecio] = useState<number | undefined>(undefined)
+  const [qrMoneda, setQrMoneda] = useState<string>('ARS')
 
   const { sectores } = useSectores(selectedEvento || null)
   const { mesas, loadMesas } = useMesas(selectedEvento || null, selectedSector || null)
@@ -106,9 +108,11 @@ export function MesasRRPPPage() {
     })
   }
 
-  const handleVentaSuccess = (qr: string, clienteNombre: string | null) => {
+  const handleVentaSuccess = (qr: string, clienteNombre: string | null, precio?: number, moneda?: string) => {
     setQrCode(qr)
     setQrClienteNombre(clienteNombre)
+    setQrPrecio(precio)
+    setQrMoneda(moneda ?? 'ARS')
     setVenderDialogOpen(false)
     setMesaDetailOpen(false)
     setQrDialogOpen(true)
@@ -117,7 +121,7 @@ export function MesasRRPPPage() {
 
   const handleVerQR = async () => {
     if (!selectedMesa) return
-    const { qr_code, cliente_nombre, error } = await mesasService.getVentaQRByMesa(selectedMesa.id)
+    const { qr_code, cliente_nombre, precio_venta, moneda, error } = await mesasService.getVentaQRByMesa(selectedMesa.id)
     if (error) {
       toast.error(error.message)
       return
@@ -125,6 +129,8 @@ export function MesasRRPPPage() {
     if (qr_code) {
       setQrCode(qr_code)
       setQrClienteNombre(cliente_nombre)
+      setQrPrecio(precio_venta ?? selectedMesa.precio)
+      setQrMoneda(moneda)
       setMesaDetailOpen(false)
       setQrDialogOpen(true)
     } else {
@@ -259,7 +265,8 @@ export function MesasRRPPPage() {
         mesaNombre={selectedMesa?.nombre}
         sectorNombre={sector?.nombre}
         clienteNombre={qrClienteNombre}
-        precio={selectedMesa?.precio}
+        precio={qrPrecio ?? selectedMesa?.precio}
+        moneda={qrMoneda}
         maxPersonas={selectedMesa?.max_personas}
         detalleConsumicion={selectedMesa?.detalle_consumicion}
         eventoBannerUrl={eventoActual?.evento_banner_url}

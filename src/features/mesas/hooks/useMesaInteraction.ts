@@ -31,7 +31,8 @@ export function useMesaInteraction() {
     onSuccess?: (qrCode: string) => void,
     metodoPago: string = 'efectivo',
     montoEfectivo: number = 0,
-    montoTransferencia: number = 0
+    montoTransferencia: number = 0,
+    moneda: string = 'ARS'
   ) => {
     setLoading(true)
     const { data, error } = await mesasRPCService.venderMesa(
@@ -42,7 +43,8 @@ export function useMesaInteraction() {
       precioVenta,
       metodoPago,
       montoEfectivo,
-      montoTransferencia
+      montoTransferencia,
+      moneda
     )
 
     if (error || !data?.success) {

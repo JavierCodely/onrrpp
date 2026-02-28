@@ -24,11 +24,16 @@ interface LoteFormData {
   nombre: string
   cantidad_maxima: string
   precio: string
+  precio_usd: string
+  precio_reales: string
   es_vip: boolean
   grupo: GrupoType | '' | 'TODOS'
   comision_tipo: 'monto' | 'porcentaje'
   comision_rrpp_monto: string
   comision_rrpp_porcentaje: string
+  comision_ars: string
+  comision_usd: string
+  comision_reales: string
 }
 
 interface LoteFormDialogProps {
@@ -96,7 +101,7 @@ export function LoteFormDialog({
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="lote-precio">Precio</Label>
+                <Label htmlFor="lote-precio">Precio en Pesos ($)</Label>
                 <Input
                   id="lote-precio"
                   type="number"
@@ -112,6 +117,41 @@ export function LoteFormDialog({
                 <p className="text-xs text-muted-foreground">
                   Usa 0 para lotes gratuitos
                 </p>
+              </div>
+            </div>
+
+            {/* Precios alternativos */}
+            <div className="border rounded-md p-3 space-y-3 bg-muted/30">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Precios en otras monedas (opcional)</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="lote-precio-usd">Precio en USD ($)</Label>
+                  <Input
+                    id="lote-precio-usd"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={loteFormData.precio_usd}
+                    onChange={(e) =>
+                      setLoteFormData({ ...loteFormData, precio_usd: e.target.value })
+                    }
+                    placeholder="0.00"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lote-precio-reales">Precio en Reales (R$)</Label>
+                  <Input
+                    id="lote-precio-reales"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={loteFormData.precio_reales}
+                    onChange={(e) =>
+                      setLoteFormData({ ...loteFormData, precio_reales: e.target.value })
+                    }
+                    placeholder="0.00"
+                  />
+                </div>
               </div>
             </div>
 
@@ -246,6 +286,57 @@ export function LoteFormDialog({
                   </p>
                 </div>
               )}
+            </div>
+
+            {/* Comisión por moneda (monto fijo por ARS, USD, BRL; 0 = sin comisión) */}
+            <div className="border rounded-md p-3 space-y-3 bg-muted/30">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                Comisión por moneda (opcional, 0 = sin comisión)
+              </p>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="lote-comision-ars">ARS ($)</Label>
+                  <Input
+                    id="lote-comision-ars"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={loteFormData.comision_ars}
+                    onChange={(e) =>
+                      setLoteFormData({ ...loteFormData, comision_ars: e.target.value })
+                    }
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lote-comision-usd" className="text-blue-600 dark:text-blue-400">USD ($)</Label>
+                  <Input
+                    id="lote-comision-usd"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={loteFormData.comision_usd}
+                    onChange={(e) =>
+                      setLoteFormData({ ...loteFormData, comision_usd: e.target.value })
+                    }
+                    placeholder="0"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lote-comision-reales" className="text-green-600 dark:text-green-400">BRL (R$)</Label>
+                  <Input
+                    id="lote-comision-reales"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={loteFormData.comision_reales}
+                    onChange={(e) =>
+                      setLoteFormData({ ...loteFormData, comision_reales: e.target.value })
+                    }
+                    placeholder="0"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 

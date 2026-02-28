@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Users, DollarSign, Wine, X, QrCode, UserCircle } from 'lucide-react'
 import type { Mesa } from '@/types/database'
+import { MONEDA_SIMBOLO } from '@/types/database'
 
 interface MesaDetailDialogProps {
   open: boolean
@@ -73,12 +74,29 @@ export function MesaDetailDialog({
                 <span className="font-semibold">{mesa.escaneos_seguridad_count}/{mesa.max_personas}</span>
               </div>
 
-              <div className="flex items-center justify-between">
+              <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2 text-muted-foreground">
-                  <DollarSign className="h-4 w-4" />
+                  <DollarSign className="h-4 w-4 mt-0.5" />
                   <span className="text-sm">Precio</span>
                 </div>
-                <span className="font-semibold">${mesa.precio.toFixed(2)}</span>
+                <div className="text-right space-y-0.5">
+                  <div className="font-semibold">
+                    {MONEDA_SIMBOLO['ARS']}{mesa.precio.toFixed(2)}
+                    <span className="ml-1 text-xs text-muted-foreground font-normal">ARS</span>
+                  </div>
+                  {mesa.precio_usd != null && (
+                    <div className="text-sm font-medium text-blue-600 dark:text-blue-400">
+                      {MONEDA_SIMBOLO['USD']}{mesa.precio_usd.toFixed(2)}
+                      <span className="ml-1 text-xs opacity-75">USD</span>
+                    </div>
+                  )}
+                  {mesa.precio_reales != null && (
+                    <div className="text-sm font-medium text-green-600 dark:text-green-400">
+                      {MONEDA_SIMBOLO['BRL']}{mesa.precio_reales.toFixed(2)}
+                      <span className="ml-1 text-xs opacity-75">BRL</span>
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="flex items-center justify-between">

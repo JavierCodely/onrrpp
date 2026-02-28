@@ -6,7 +6,8 @@ import {
   actualizarAcreditacionRRPP,
   type VentaRRPPResumen,
 } from '@/services/ventas-admin.service'
-import type { Evento } from '@/types/database'
+import type { Evento, TipoMoneda } from '@/types/database'
+import { MONEDA_LABELS } from '@/types/database'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   Table,
@@ -45,6 +46,7 @@ export function VentasAdminPage() {
   const [filtroComision, setFiltroComision] = useState<'todas' | 'acreditadas' | 'no_acreditadas'>('todas')
   const [mostrarMesas, setMostrarMesas] = useState(true)
   const [mostrarLotes, setMostrarLotes] = useState(true)
+  const [filtroMoneda, setFiltroMoneda] = useState<TipoMoneda | 'todas'>('todas')
 
   useEffect(() => {
     loadEventos()
@@ -91,11 +93,20 @@ export function VentasAdminPage() {
       filtered = filtered.filter((v) => !v.todas_comisiones_acreditadas)
     }
 
+    // Filtrar por moneda: solo mostrar RRPP que tengan ventas o mesas en esa moneda
+    if (filtroMoneda !== 'todas') {
+      filtered = filtered.map((v) => ({
+        ...v,
+        ventas: v.ventas.filter((venta) => venta.moneda === filtroMoneda),
+        mesas: v.mesas.filter((mesa) => mesa.moneda === filtroMoneda),
+      })).filter((v) => v.ventas.length > 0 || v.mesas.length > 0)
+    }
+
     // Ordenar de mayor a menor por total a acreditar
     filtered.sort((a, b) => b.total_a_acreditar - a.total_a_acreditar)
 
     setFilteredVentas(filtered)
-  }, [searchRRPP, ventasResumen, filtroEntradas, filtroComision, mostrarMesas, mostrarLotes])
+  }, [searchRRPP, ventasResumen, filtroEntradas, filtroComision, mostrarMesas, mostrarLotes, filtroMoneda])
 
   const loadEventos = async () => {
     if (!user) return
@@ -163,16 +174,70 @@ export function VentasAdminPage() {
         ? rrpp.total_comisiones - rrpp.mesas.reduce((s, m) => s + m.comision_calculada, 0)
         : 0
 
+      // Totales por moneda
+      const ventasARS = mostrarLotes ? rrpp.ventas.filter(v => v.moneda === 'ARS') : []
+      const ventasUSD = mostrarLotes ? rrpp.ventas.filter(v => v.moneda === 'USD') : []
+      const ventasBRL = mostrarLotes ? rrpp.ventas.filter(v => v.moneda === 'BRL') : []
+      const mesasARS  = mostrarMesas ? rrpp.mesas.filter(m => m.moneda === 'ARS')  : []
+      const mesasUSD  = mostrarMesas ? rrpp.mesas.filter(m => m.moneda === 'USD')  : []
+      const mesasBRL  = mostrarMesas ? rrpp.mesas.filter(m => m.moneda === 'BRL')  : []
+
       return {
-        totalVentas:       acc.totalVentas       + (mostrarLotes ? rrpp.ventas.length : 0) + (mostrarMesas ? rrpp.mesas.length : 0),
+        totalVentas:        acc.totalVentas        + (mostrarLotes ? rrpp.ventas.length : 0) + (mostrarMesas ? rrpp.mesas.length : 0),
         totalTransferencia: acc.totalTransferencia + lotesTransf  + mesasTransf,
-        totalEfectivo:     acc.totalEfectivo     + lotesEfect    + mesasEfect,
-        totalAcreditar:    acc.totalAcreditar    + lotesTotal    + mesasTotal,
-        totalComisiones:   acc.totalComisiones   + lotesComision + mesasComision,
+        totalEfectivo:      acc.totalEfectivo      + lotesEfect   + mesasEfect,
+        totalAcreditar:     acc.totalAcreditar     + lotesTotal   + mesasTotal,
+        totalComisiones:    acc.totalComisiones    + lotesComision + mesasComision,
+        // Por moneda — total a acreditar
+        totalARS: acc.totalARS
+          + ventasARS.reduce((s, v) => s + v.monto_total, 0)
+          + mesasARS.reduce((s, m) => s + m.precio_venta, 0),
+        totalUSD: acc.totalUSD
+          + ventasUSD.reduce((s, v) => s + v.monto_total, 0)
+          + mesasUSD.reduce((s, m) => s + m.precio_venta, 0),
+        totalBRL: acc.totalBRL
+          + ventasBRL.reduce((s, v) => s + v.monto_total, 0)
+          + mesasBRL.reduce((s, m) => s + m.precio_venta, 0),
+        // Por moneda — transferencia
+        transfARS: acc.transfARS
+          + ventasARS.reduce((s, v) => s + v.monto_transferencia, 0)
+          + mesasARS.reduce((s, m) => s + m.monto_transferencia, 0),
+        transfUSD: acc.transfUSD
+          + ventasUSD.reduce((s, v) => s + v.monto_transferencia, 0)
+          + mesasUSD.reduce((s, m) => s + m.monto_transferencia, 0),
+        transfBRL: acc.transfBRL
+          + ventasBRL.reduce((s, v) => s + v.monto_transferencia, 0)
+          + mesasBRL.reduce((s, m) => s + m.monto_transferencia, 0),
+        // Por moneda — efectivo
+        efectARS: acc.efectARS
+          + ventasARS.reduce((s, v) => s + v.monto_efectivo, 0)
+          + mesasARS.reduce((s, m) => s + m.monto_efectivo, 0),
+        efectUSD: acc.efectUSD
+          + ventasUSD.reduce((s, v) => s + v.monto_efectivo, 0)
+          + mesasUSD.reduce((s, m) => s + m.monto_efectivo, 0),
+        efectBRL: acc.efectBRL
+          + ventasBRL.reduce((s, v) => s + v.monto_efectivo, 0)
+          + mesasBRL.reduce((s, m) => s + m.monto_efectivo, 0),
+        // Por moneda — comisiones (lotes van a ARS; mesas se desglosan por moneda)
+        comisARS: acc.comisARS + lotesComision + (mostrarMesas ? mesasARS.reduce((s, m) => s + m.comision_calculada, 0) : 0),
+        comisUSD: acc.comisUSD + (mostrarMesas ? mesasUSD.reduce((s, m) => s + m.comision_calculada, 0) : 0),
+        comisBRL: acc.comisBRL + (mostrarMesas ? mesasBRL.reduce((s, m) => s + m.comision_calculada, 0) : 0),
+        cantARS: acc.cantARS + ventasARS.length + mesasARS.length,
+        cantUSD: acc.cantUSD + ventasUSD.length + mesasUSD.length,
+        cantBRL: acc.cantBRL + ventasBRL.length + mesasBRL.length,
       }
     },
-    { totalVentas: 0, totalTransferencia: 0, totalEfectivo: 0, totalAcreditar: 0, totalComisiones: 0 }
+    {
+      totalVentas: 0, totalTransferencia: 0, totalEfectivo: 0,
+      totalAcreditar: 0, totalComisiones: 0,
+      totalARS: 0, totalUSD: 0, totalBRL: 0,
+      transfARS: 0, transfUSD: 0, transfBRL: 0,
+      efectARS: 0, efectUSD: 0, efectBRL: 0,
+      comisARS: 0, comisUSD: 0, comisBRL: 0,
+      cantARS: 0, cantUSD: 0, cantBRL: 0,
+    }
   )
+
 
   return (
     <div className="space-y-6 p-6">
@@ -246,6 +311,21 @@ export function VentasAdminPage() {
               </Select>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="filtro-moneda">Moneda</Label>
+              <Select value={filtroMoneda} onValueChange={(value: any) => setFiltroMoneda(value)}>
+                <SelectTrigger id="filtro-moneda">
+                  <SelectValue placeholder="Todas" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todas">Todas las monedas</SelectItem>
+                  <SelectItem value="ARS">{MONEDA_LABELS['ARS']}</SelectItem>
+                  <SelectItem value="USD">{MONEDA_LABELS['USD']}</SelectItem>
+                  <SelectItem value="BRL">{MONEDA_LABELS['BRL']}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="flex flex-col gap-3 pb-1">
               <div className="flex items-center gap-3">
                 <Switch
@@ -305,7 +385,9 @@ export function VentasAdminPage() {
 
       {/* Totales generales */}
       {selectedEvento && filteredVentas.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+
+          {/* Total Ventas */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -313,11 +395,27 @@ export function VentasAdminPage() {
                 Total Ventas
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{totalesGenerales.totalVentas}</p>
+            <CardContent className="space-y-2">
+              <div>
+                <p className="text-xs text-muted-foreground">ARS</p>
+                <p className="text-2xl font-bold">{totalesGenerales.cantARS}</p>
+              </div>
+              {totalesGenerales.cantUSD > 0 && (
+                <div className="pt-1 border-t">
+                  <p className="text-xs text-blue-500">USD</p>
+                  <p className="text-lg font-bold text-blue-600 dark:text-blue-400">{totalesGenerales.cantUSD}</p>
+                </div>
+              )}
+              {totalesGenerales.cantBRL > 0 && (
+                <div className="pt-1 border-t">
+                  <p className="text-xs text-green-500">BRL</p>
+                  <p className="text-lg font-bold text-green-600 dark:text-green-400">{totalesGenerales.cantBRL}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
+          {/* Transferencias */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -325,11 +423,27 @@ export function VentasAdminPage() {
                 Transferencias
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{formatCurrency(totalesGenerales.totalTransferencia)}</p>
+            <CardContent className="space-y-2">
+              <div>
+                <p className="text-xs text-muted-foreground">ARS</p>
+                <p className="text-2xl font-bold">{formatCurrency(totalesGenerales.transfARS)}</p>
+              </div>
+              {totalesGenerales.transfUSD > 0 && (
+                <div className="pt-1 border-t">
+                  <p className="text-xs text-blue-500">USD</p>
+                  <p className="text-lg font-bold text-blue-600 dark:text-blue-400">USD {totalesGenerales.transfUSD.toFixed(2)}</p>
+                </div>
+              )}
+              {totalesGenerales.transfBRL > 0 && (
+                <div className="pt-1 border-t">
+                  <p className="text-xs text-green-500">BRL</p>
+                  <p className="text-lg font-bold text-green-600 dark:text-green-400">R$ {totalesGenerales.transfBRL.toFixed(2)}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
+          {/* Efectivo */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -337,11 +451,27 @@ export function VentasAdminPage() {
                 Efectivo
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{formatCurrency(totalesGenerales.totalEfectivo)}</p>
+            <CardContent className="space-y-2">
+              <div>
+                <p className="text-xs text-muted-foreground">ARS</p>
+                <p className="text-2xl font-bold">{formatCurrency(totalesGenerales.efectARS)}</p>
+              </div>
+              {totalesGenerales.efectUSD > 0 && (
+                <div className="pt-1 border-t">
+                  <p className="text-xs text-blue-500">USD</p>
+                  <p className="text-lg font-bold text-blue-600 dark:text-blue-400">USD {totalesGenerales.efectUSD.toFixed(2)}</p>
+                </div>
+              )}
+              {totalesGenerales.efectBRL > 0 && (
+                <div className="pt-1 border-t">
+                  <p className="text-xs text-green-500">BRL</p>
+                  <p className="text-lg font-bold text-green-600 dark:text-green-400">R$ {totalesGenerales.efectBRL.toFixed(2)}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
+          {/* Total a Acreditar */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -349,11 +479,27 @@ export function VentasAdminPage() {
                 Total a Acreditar
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{formatCurrency(totalesGenerales.totalAcreditar)}</p>
+            <CardContent className="space-y-2">
+              <div>
+                <p className="text-xs text-muted-foreground">ARS</p>
+                <p className="text-2xl font-bold">{formatCurrency(totalesGenerales.totalARS)}</p>
+              </div>
+              {totalesGenerales.totalUSD > 0 && (
+                <div className="pt-1 border-t">
+                  <p className="text-xs text-blue-500">USD</p>
+                  <p className="text-lg font-bold text-blue-600 dark:text-blue-400">USD {totalesGenerales.totalUSD.toFixed(2)}</p>
+                </div>
+              )}
+              {totalesGenerales.totalBRL > 0 && (
+                <div className="pt-1 border-t">
+                  <p className="text-xs text-green-500">BRL</p>
+                  <p className="text-lg font-bold text-green-600 dark:text-green-400">R$ {totalesGenerales.totalBRL.toFixed(2)}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
+          {/* Total Comisiones */}
           <Card>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -361,10 +507,26 @@ export function VentasAdminPage() {
                 Total Comisiones
               </CardTitle>
             </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{formatCurrency(totalesGenerales.totalComisiones)}</p>
+            <CardContent className="space-y-2">
+              <div>
+                <p className="text-xs text-muted-foreground">ARS</p>
+                <p className="text-2xl font-bold">{formatCurrency(totalesGenerales.comisARS)}</p>
+              </div>
+              {totalesGenerales.comisUSD > 0 && (
+                <div className="pt-1 border-t">
+                  <p className="text-xs text-blue-500">USD</p>
+                  <p className="text-lg font-bold text-blue-600 dark:text-blue-400">USD {totalesGenerales.comisUSD.toFixed(2)}</p>
+                </div>
+              )}
+              {totalesGenerales.comisBRL > 0 && (
+                <div className="pt-1 border-t">
+                  <p className="text-xs text-green-500">BRL</p>
+                  <p className="text-lg font-bold text-green-600 dark:text-green-400">R$ {totalesGenerales.comisBRL.toFixed(2)}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
+
         </div>
       )}
 
@@ -404,19 +566,33 @@ export function VentasAdminPage() {
                   <TableBody>
                     {filteredVentas.map((rrpp) => {
                       // Calcular totales por fila respetando ambos filtros
-                      const mesasTransf   = rrpp.mesas.reduce((s, m) => s + m.monto_transferencia, 0)
-                      const mesasEfect    = rrpp.mesas.reduce((s, m) => s + m.monto_efectivo, 0)
-                      const mesasTotal    = rrpp.mesas.reduce((s, m) => s + m.precio_venta, 0)
                       const mesasComision = rrpp.mesas.reduce((s, m) => s + m.comision_calculada, 0)
-                      const lotesTransf   = rrpp.ventas.reduce((s, v) => s + v.monto_transferencia, 0)
-                      const lotesEfect    = rrpp.ventas.reduce((s, v) => s + v.monto_efectivo, 0)
-                      const lotesTotal    = rrpp.ventas.reduce((s, v) => s + v.monto_total, 0)
                       const lotesComision = rrpp.total_comisiones - mesasComision
 
-                      const transferencia  = (mostrarLotes ? lotesTransf  : 0) + (mostrarMesas ? mesasTransf  : 0)
-                      const efectivo       = (mostrarLotes ? lotesEfect    : 0) + (mostrarMesas ? mesasEfect   : 0)
-                      const totalAcreditar = (mostrarLotes ? lotesTotal    : 0) + (mostrarMesas ? mesasTotal   : 0)
                       const comisiones     = (mostrarLotes ? lotesComision : 0) + (mostrarMesas ? mesasComision : 0)
+
+                      // Desglose por moneda del RRPP
+                      const ventasARS = (mostrarLotes ? rrpp.ventas.filter(v => v.moneda === 'ARS') : [])
+                      const ventasUSD = (mostrarLotes ? rrpp.ventas.filter(v => v.moneda === 'USD') : [])
+                      const ventasBRL = (mostrarLotes ? rrpp.ventas.filter(v => v.moneda === 'BRL') : [])
+                      const mesasARS  = (mostrarMesas ? rrpp.mesas.filter(m => m.moneda === 'ARS')  : [])
+                      const mesasUSD  = (mostrarMesas ? rrpp.mesas.filter(m => m.moneda === 'USD')  : [])
+                      const mesasBRL  = (mostrarMesas ? rrpp.mesas.filter(m => m.moneda === 'BRL')  : [])
+
+                      const totalRowARS  = ventasARS.reduce((s, v) => s + v.monto_total, 0)          + mesasARS.reduce((s, m) => s + m.precio_venta, 0)
+                      const totalRowUSD  = ventasUSD.reduce((s, v) => s + v.monto_total, 0)          + mesasUSD.reduce((s, m) => s + m.precio_venta, 0)
+                      const totalRowBRL  = ventasBRL.reduce((s, v) => s + v.monto_total, 0)          + mesasBRL.reduce((s, m) => s + m.precio_venta, 0)
+
+                      const transfRowARS = ventasARS.reduce((s, v) => s + v.monto_transferencia, 0)  + mesasARS.reduce((s, m) => s + m.monto_transferencia, 0)
+                      const transfRowUSD = ventasUSD.reduce((s, v) => s + v.monto_transferencia, 0)  + mesasUSD.reduce((s, m) => s + m.monto_transferencia, 0)
+                      const transfRowBRL = ventasBRL.reduce((s, v) => s + v.monto_transferencia, 0)  + mesasBRL.reduce((s, m) => s + m.monto_transferencia, 0)
+
+                      const efectRowARS  = ventasARS.reduce((s, v) => s + v.monto_efectivo, 0)       + mesasARS.reduce((s, m) => s + m.monto_efectivo, 0)
+                      const efectRowUSD  = ventasUSD.reduce((s, v) => s + v.monto_efectivo, 0)       + mesasUSD.reduce((s, m) => s + m.monto_efectivo, 0)
+                      const efectRowBRL  = ventasBRL.reduce((s, v) => s + v.monto_efectivo, 0)       + mesasBRL.reduce((s, m) => s + m.monto_efectivo, 0)
+
+                      const tieneUSD = totalRowUSD > 0
+                      const tieneBRL = totalRowBRL > 0
 
                       return (
                       <TableRow key={rrpp.id_rrpp}>
@@ -433,23 +609,79 @@ export function VentasAdminPage() {
                               </div>
                             ))}
                             {mostrarMesas && rrpp.mesas.map((m) => (
-                              <div key={m.id} className="flex items-center gap-2">
+                              <div key={m.id} className="flex items-center gap-2 flex-wrap">
                                 <Badge variant="secondary" className="gap-1">
                                   <UtensilsCrossed className="h-3 w-3" />
                                   {m.mesa_nombre ?? 'Mesa'}
                                 </Badge>
+                                {m.moneda !== 'ARS' && (
+                                  <Badge className={m.moneda === 'USD' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' : 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300'}>
+                                    {m.moneda}
+                                  </Badge>
+                                )}
                               </div>
                             ))}
                           </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatCurrency(transferencia)}
+                          <div className="space-y-1">
+                            <div>
+                              <p className="text-xs text-muted-foreground">ARS</p>
+                              <p>{formatCurrency(transfRowARS)}</p>
+                            </div>
+                            {tieneUSD && (
+                              <div className="pt-1 border-t">
+                                <p className="text-xs text-blue-500">USD</p>
+                                <p className="text-blue-600 dark:text-blue-400">USD {transfRowUSD.toFixed(2)}</p>
+                              </div>
+                            )}
+                            {tieneBRL && (
+                              <div className="pt-1 border-t">
+                                <p className="text-xs text-green-500">BRL</p>
+                                <p className="text-green-600 dark:text-green-400">R$ {transfRowBRL.toFixed(2)}</p>
+                              </div>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right">
-                          {formatCurrency(efectivo)}
+                          <div className="space-y-1">
+                            <div>
+                              <p className="text-xs text-muted-foreground">ARS</p>
+                              <p>{formatCurrency(efectRowARS)}</p>
+                            </div>
+                            {tieneUSD && (
+                              <div className="pt-1 border-t">
+                                <p className="text-xs text-blue-500">USD</p>
+                                <p className="text-blue-600 dark:text-blue-400">USD {efectRowUSD.toFixed(2)}</p>
+                              </div>
+                            )}
+                            {tieneBRL && (
+                              <div className="pt-1 border-t">
+                                <p className="text-xs text-green-500">BRL</p>
+                                <p className="text-green-600 dark:text-green-400">R$ {efectRowBRL.toFixed(2)}</p>
+                              </div>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right font-bold">
-                          {formatCurrency(totalAcreditar)}
+                          <div className="space-y-1">
+                            <div>
+                              <p className="text-xs text-muted-foreground font-normal">ARS</p>
+                              <p>{formatCurrency(totalRowARS)}</p>
+                            </div>
+                            {tieneUSD && (
+                              <div className="pt-1 border-t">
+                                <p className="text-xs text-blue-500 font-normal">USD</p>
+                                <p className="text-blue-600 dark:text-blue-400">USD {totalRowUSD.toFixed(2)}</p>
+                              </div>
+                            )}
+                            {tieneBRL && (
+                              <div className="pt-1 border-t">
+                                <p className="text-xs text-green-500 font-normal">BRL</p>
+                                <p className="text-green-600 dark:text-green-400">R$ {totalRowBRL.toFixed(2)}</p>
+                              </div>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-right font-bold text-green-600">
                           {formatCurrency(comisiones)}

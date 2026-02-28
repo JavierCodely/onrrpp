@@ -5,6 +5,7 @@ import { authService } from '@/services/auth.service'
 import { Card, CardContent } from '@/components/ui/card'
 import { toast } from 'sonner'
 import { invitadosService } from '@/services/invitados.service'
+import { supabase } from '@/lib/supabase'
 import {
   EventoCard,
   InvitadosList,
@@ -137,8 +138,24 @@ export function InvitadosPage() {
       return
     }
 
-    // Si el usuario está activo, mostrar el QR
-    setSelectedInvitado(invitado)
+    // Obtener moneda y monto real de la venta para mostrar en el QR
+    let invitadoConVenta: InvitadoConLote = invitado
+    if (!invitado.ventas?.length) {
+      const { data: ventaData } = await supabase
+        .from('ventas')
+        .select('moneda, monto_total')
+        .eq('uuid_invitado', invitado.id)
+        .maybeSingle()
+
+      if (ventaData) {
+        invitadoConVenta = {
+          ...invitado,
+          ventas: [{ moneda: ventaData.moneda ?? 'ARS', monto_total: ventaData.monto_total }],
+        }
+      }
+    }
+
+    setSelectedInvitado(invitadoConVenta)
     setQrDialogOpen(true)
   }
 
