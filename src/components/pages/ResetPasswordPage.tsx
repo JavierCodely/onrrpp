@@ -9,6 +9,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Eye, EyeOff, ArrowLeft, CheckCircle } from 'lucide-react'
 import { authService } from '@/services/auth.service'
 import { supabase } from '@/lib/supabase'
+import ReCAPTCHA from 'react-google-recaptcha'
 
 type PageMode = 'request' | 'update' | 'success'
 
@@ -28,6 +29,10 @@ export function ResetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
+
+  // Captcha para solicitud de reset
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
+  const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY
 
   // Check if user arrived from password reset email
   useEffect(() => {
@@ -81,6 +86,13 @@ export function ResetPasswordPage() {
 
     if (!email) {
       setError('Por favor ingresa tu email')
+      setLoading(false)
+      return
+    }
+
+    // Requerir captcha si está configurado
+    if (RECAPTCHA_SITE_KEY && !captchaToken) {
+      setError('Por favor completa el captcha antes de enviar la solicitud')
       setLoading(false)
       return
     }
@@ -324,11 +336,24 @@ export function ResetPasswordPage() {
                 onChange={(e) => {
                   setEmail(e.target.value)
                   setError(null)
+                  setCaptchaToken(null)
                 }}
                 disabled={loading}
                 required
               />
             </div>
+
+            {RECAPTCHA_SITE_KEY && (
+              <div className="flex justify-center">
+                <ReCAPTCHA
+                  sitekey={RECAPTCHA_SITE_KEY}
+                  onChange={(token) => {
+                    setCaptchaToken(token)
+                    setError(null)
+                  }}
+                />
+              </div>
+            )}
 
             {error && (
               <Alert variant="destructive">
