@@ -53,7 +53,7 @@ const colorThemes = [
 ]
 
 export function ConfiguracionPage() {
-  const [themeMode, setThemeMode] = useState<ThemeMode>('light')
+  const [themeMode, setThemeMode] = useState<ThemeMode>('dark')
   const [selectedColor, setSelectedColor] = useState<ThemeColor>('default')
 
   useEffect(() => {
@@ -63,9 +63,10 @@ export function ConfiguracionPage() {
   }, [])
 
   const handleToggleMode = () => {
-    const newMode = themeService.toggleMode()
-    setThemeMode(newMode)
-    toast.success(`Tema ${newMode === 'dark' ? 'oscuro' : 'claro'} activado`)
+    // Forzar siempre modo oscuro
+    themeService.setMode('dark')
+    setThemeMode('dark')
+    toast.success('Tema oscuro activado')
   }
 
   const handleColorChange = (color: ThemeColor) => {
@@ -105,14 +106,12 @@ export function ConfiguracionPage() {
                 Tema Oscuro
               </Label>
               <p className="text-sm text-muted-foreground">
-                {themeMode === 'dark'
-                  ? 'Modo oscuro activado'
-                  : 'Modo claro activado'}
+                Modo oscuro activado
               </p>
             </div>
             <Switch
               id="theme-mode"
-              checked={themeMode === 'dark'}
+              checked={true}
               onCheckedChange={handleToggleMode}
             />
           </div>

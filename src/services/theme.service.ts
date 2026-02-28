@@ -9,7 +9,7 @@ export interface ThemePreferences {
 const THEME_STORAGE_KEY = 'app-theme-preferences'
 
 const defaultPreferences: ThemePreferences = {
-  mode: 'light',
+  mode: 'dark',
   color: 'default',
 }
 
@@ -40,12 +40,8 @@ export const themeService = {
   applyTheme(preferences: ThemePreferences): void {
     const root = document.documentElement
 
-    // Aplicar/remover clase dark
-    if (preferences.mode === 'dark') {
-      root.classList.add('dark')
-    } else {
-      root.classList.remove('dark')
-    }
+    // Forzar siempre modo oscuro
+    root.classList.add('dark')
 
     // Remover todas las clases de tema previas
     root.classList.remove(
