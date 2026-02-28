@@ -51,6 +51,11 @@ const menuItems = [
     path: '/dashboard/admin/ventas',
   },
   {
+    name: 'Clientes',
+    icon: User,
+    path: '/dashboard/admin/clientes',
+  },
+  {
     name: 'Empleados',
     icon: Users,
     path: '/dashboard/admin/empleados',

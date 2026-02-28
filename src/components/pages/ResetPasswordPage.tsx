@@ -32,9 +32,11 @@ export function ResetPasswordPage() {
   // Check if user arrived from password reset email
   useEffect(() => {
     const checkSession = async () => {
-      // Check URL for recovery token (Supabase adds this when user clicks email link)
-      const hashParams = new URLSearchParams(window.location.hash.substring(1))
-      const type = hashParams.get('type')
+      // Check URL for recovery token (Supabase puede usar hash o query params)
+      const url = new URL(window.location.href)
+      const hashParams = new URLSearchParams(url.hash.startsWith('#') ? url.hash.substring(1) : url.hash)
+      const searchParams = url.searchParams
+      const type = hashParams.get('type') || searchParams.get('type')
 
       if (type === 'recovery') {
         // User clicked the reset link - Supabase handles the session automatically
@@ -48,7 +50,7 @@ export function ResetPasswordPage() {
 
       if (session) {
         // Check if this is a recovery session by looking at the URL or session
-        const accessToken = hashParams.get('access_token')
+        const accessToken = hashParams.get('access_token') || searchParams.get('access_token')
         if (accessToken) {
           setMode('update')
         }

@@ -8,6 +8,7 @@ import { ConfiguracionesPage } from '@/components/pages/admin/ConfiguracionesPag
 import { ConfiguracionPage } from '@/components/pages/ConfiguracionPage'
 import { SectoresPage } from '@/components/pages/admin/SectoresPage'
 import { MesasAdminPage } from '@/components/pages/admin/MesasAdminPage'
+import { ClientesPage } from '@/components/pages/admin/ClientesPage'
 
 export function AdminDashboard() {
   return (
@@ -16,6 +17,7 @@ export function AdminDashboard() {
         <Route index element={<DashboardPage />} />
         <Route path="eventos" element={<EventosPage />} />
         <Route path="ventas" element={<VentasAdminPage />} />
+        <Route path="clientes" element={<ClientesPage />} />
         <Route path="empleados" element={<EmpleadosPage />} />
         <Route path="configuraciones" element={<ConfiguracionesPage />} />
         <Route path="tema" element={<ConfiguracionPage />} />
