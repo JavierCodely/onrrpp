@@ -54,7 +54,7 @@ export function MesaDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg bg-background/60 backdrop-blur-md border border-border/40 shadow-xl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             {mesa.nombre}
@@ -64,7 +64,7 @@ export function MesaDetailDialog({
         </DialogHeader>
 
         <div className="space-y-4">
-          <Card>
+          <Card className="bg-background/40 border border-border/30 shadow-sm">
             <CardContent className="pt-6 space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-muted-foreground">
@@ -140,31 +140,52 @@ export function MesaDetailDialog({
 
           <div className="flex flex-col gap-2">
             {mesa.estado === 'libre' && onReservar && (
-              <Button onClick={onReservar} disabled={loading} className="w-full">
+              <Button
+                onClick={onReservar}
+                disabled={loading}
+                className="w-full bg-primary/60 hover:bg-primary/80"
+              >
                 Reservar Mesa
               </Button>
             )}
 
             {(mesa.estado === 'libre' || mesa.estado === 'reservado') && onVender && (
-              <Button onClick={onVender} disabled={loading} className="w-full">
+              <Button
+                onClick={onVender}
+                disabled={loading}
+                className="w-full bg-primary/60 hover:bg-primary/80"
+              >
                 {mesa.estado === 'reservado' ? 'Confirmar Venta' : 'Vender Mesa'}
               </Button>
             )}
 
             {mesa.estado === 'reservado' && onLiberarReserva && (
-              <Button onClick={onLiberarReserva} disabled={loading} variant="destructive" className="w-full">
+              <Button
+                onClick={onLiberarReserva}
+                disabled={loading}
+                variant="destructive"
+                className="w-full bg-destructive/60 hover:bg-destructive/80"
+              >
                 Liberar Reserva
               </Button>
             )}
 
             {mesa.estado === 'vendido' && onVerQR && (
-              <Button onClick={onVerQR} disabled={loading} className="w-full gap-2">
+              <Button
+                onClick={onVerQR}
+                disabled={loading}
+                className="w-full gap-2 bg-primary/60 hover:bg-primary/80"
+              >
                 <QrCode className="h-4 w-4" />
                 Ver Código QR
               </Button>
             )}
 
-            <Button onClick={() => onOpenChange(false)} variant="outline" className="w-full gap-2">
+            <Button
+              onClick={() => onOpenChange(false)}
+              variant="outline"
+              className="w-full gap-2 bg-background/40 hover:bg-background/60"
+            >
               <X className="h-4 w-4" />
               Cerrar
             </Button>
