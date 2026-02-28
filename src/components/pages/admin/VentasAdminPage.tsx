@@ -171,7 +171,7 @@ export function VentasAdminPage() {
       const lotesEfect    = mostrarLotes  ? rrpp.ventas.reduce((s, v) => s + v.monto_efectivo, 0)      : 0
       const lotesTotal    = mostrarLotes  ? rrpp.ventas.reduce((s, v) => s + v.monto_total, 0)         : 0
       const lotesComision = mostrarLotes
-        ? rrpp.total_comisiones - rrpp.mesas.reduce((s, m) => s + m.comision_calculada, 0)
+        ? rrpp.ventas.reduce((s, v) => s + (v.comision ?? 0), 0)
         : 0
 
       // Totales por moneda
@@ -218,10 +218,16 @@ export function VentasAdminPage() {
         efectBRL: acc.efectBRL
           + ventasBRL.reduce((s, v) => s + v.monto_efectivo, 0)
           + mesasBRL.reduce((s, m) => s + m.monto_efectivo, 0),
-        // Por moneda — comisiones (lotes van a ARS; mesas se desglosan por moneda)
-        comisARS: acc.comisARS + lotesComision + (mostrarMesas ? mesasARS.reduce((s, m) => s + m.comision_calculada, 0) : 0),
-        comisUSD: acc.comisUSD + (mostrarMesas ? mesasUSD.reduce((s, m) => s + m.comision_calculada, 0) : 0),
-        comisBRL: acc.comisBRL + (mostrarMesas ? mesasBRL.reduce((s, m) => s + m.comision_calculada, 0) : 0),
+        // Por moneda — comisiones según moneda de cada venta
+        comisARS: acc.comisARS
+          + (mostrarLotes ? ventasARS.reduce((s, v) => s + (v.comision ?? 0), 0) : 0)
+          + (mostrarMesas ? mesasARS.reduce((s, m) => s + m.comision_calculada, 0) : 0),
+        comisUSD: acc.comisUSD
+          + (mostrarLotes ? ventasUSD.reduce((s, v) => s + (v.comision ?? 0), 0) : 0)
+          + (mostrarMesas ? mesasUSD.reduce((s, m) => s + m.comision_calculada, 0) : 0),
+        comisBRL: acc.comisBRL
+          + (mostrarLotes ? ventasBRL.reduce((s, v) => s + (v.comision ?? 0), 0) : 0)
+          + (mostrarMesas ? mesasBRL.reduce((s, m) => s + m.comision_calculada, 0) : 0),
         cantARS: acc.cantARS + ventasARS.length + mesasARS.length,
         cantUSD: acc.cantUSD + ventasUSD.length + mesasUSD.length,
         cantBRL: acc.cantBRL + ventasBRL.length + mesasBRL.length,
@@ -240,10 +246,10 @@ export function VentasAdminPage() {
 
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-4 sm:space-y-6 p-4 sm:p-6 max-w-[100vw] overflow-x-hidden">
       <div>
-        <h1 className="text-3xl font-bold">Ventas y Acreditaciones</h1>
-        <p className="text-muted-foreground">Gestiona las acreditaciones de entradas y comisiones</p>
+        <h1 className="text-2xl sm:text-3xl font-bold">Ventas y Acreditaciones</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">Gestiona las acreditaciones de entradas y comisiones</p>
       </div>
 
       {/* Filtros */}
@@ -255,7 +261,7 @@ export function VentasAdminPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
             <div className="space-y-2">
               <Label htmlFor="evento">Evento *</Label>
               <Select value={selectedEvento} onValueChange={setSelectedEvento}>
@@ -385,7 +391,7 @@ export function VentasAdminPage() {
 
       {/* Totales generales */}
       {selectedEvento && filteredVentas.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
 
           {/* Total Ventas */}
           <Card>
@@ -398,7 +404,7 @@ export function VentasAdminPage() {
             <CardContent className="space-y-2">
               <div>
                 <p className="text-xs text-muted-foreground">ARS</p>
-                <p className="text-2xl font-bold">{totalesGenerales.cantARS}</p>
+                <p className="text-xl sm:text-2xl font-bold">{totalesGenerales.cantARS}</p>
               </div>
               {totalesGenerales.cantUSD > 0 && (
                 <div className="pt-1 border-t">
@@ -426,7 +432,7 @@ export function VentasAdminPage() {
             <CardContent className="space-y-2">
               <div>
                 <p className="text-xs text-muted-foreground">ARS</p>
-                <p className="text-2xl font-bold">{formatCurrency(totalesGenerales.transfARS)}</p>
+                <p className="text-xl sm:text-2xl font-bold">{formatCurrency(totalesGenerales.transfARS)}</p>
               </div>
               {totalesGenerales.transfUSD > 0 && (
                 <div className="pt-1 border-t">
@@ -454,7 +460,7 @@ export function VentasAdminPage() {
             <CardContent className="space-y-2">
               <div>
                 <p className="text-xs text-muted-foreground">ARS</p>
-                <p className="text-2xl font-bold">{formatCurrency(totalesGenerales.efectARS)}</p>
+                <p className="text-xl sm:text-2xl font-bold">{formatCurrency(totalesGenerales.efectARS)}</p>
               </div>
               {totalesGenerales.efectUSD > 0 && (
                 <div className="pt-1 border-t">
@@ -482,7 +488,7 @@ export function VentasAdminPage() {
             <CardContent className="space-y-2">
               <div>
                 <p className="text-xs text-muted-foreground">ARS</p>
-                <p className="text-2xl font-bold">{formatCurrency(totalesGenerales.totalARS)}</p>
+                <p className="text-xl sm:text-2xl font-bold">{formatCurrency(totalesGenerales.totalARS)}</p>
               </div>
               {totalesGenerales.totalUSD > 0 && (
                 <div className="pt-1 border-t">
@@ -510,7 +516,7 @@ export function VentasAdminPage() {
             <CardContent className="space-y-2">
               <div>
                 <p className="text-xs text-muted-foreground">ARS</p>
-                <p className="text-2xl font-bold">{formatCurrency(totalesGenerales.comisARS)}</p>
+                <p className="text-xl sm:text-2xl font-bold">{formatCurrency(totalesGenerales.comisARS)}</p>
               </div>
               {totalesGenerales.comisUSD > 0 && (
                 <div className="pt-1 border-t">
@@ -549,8 +555,9 @@ export function VentasAdminPage() {
                 <p className="text-muted-foreground">No hay ventas para este evento</p>
               </div>
             ) : (
-              <div className="overflow-x-auto">
-                <Table>
+              <div className="overflow-x-auto -mx-2 overflow-y-visible" style={{ WebkitOverflowScrolling: 'touch' }}>
+                <p className="text-xs text-muted-foreground mb-2 px-2 sm:hidden">Deslizá hacia la derecha para ver todas las columnas</p>
+                <Table className="min-w-[900px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>RRPP</TableHead>
@@ -565,12 +572,6 @@ export function VentasAdminPage() {
                   </TableHeader>
                   <TableBody>
                     {filteredVentas.map((rrpp) => {
-                      // Calcular totales por fila respetando ambos filtros
-                      const mesasComision = rrpp.mesas.reduce((s, m) => s + m.comision_calculada, 0)
-                      const lotesComision = rrpp.total_comisiones - mesasComision
-
-                      const comisiones     = (mostrarLotes ? lotesComision : 0) + (mostrarMesas ? mesasComision : 0)
-
                       // Desglose por moneda del RRPP
                       const ventasARS = (mostrarLotes ? rrpp.ventas.filter(v => v.moneda === 'ARS') : [])
                       const ventasUSD = (mostrarLotes ? rrpp.ventas.filter(v => v.moneda === 'USD') : [])
@@ -578,6 +579,14 @@ export function VentasAdminPage() {
                       const mesasARS  = (mostrarMesas ? rrpp.mesas.filter(m => m.moneda === 'ARS')  : [])
                       const mesasUSD  = (mostrarMesas ? rrpp.mesas.filter(m => m.moneda === 'USD')  : [])
                       const mesasBRL  = (mostrarMesas ? rrpp.mesas.filter(m => m.moneda === 'BRL')  : [])
+
+                      // Comisiones por moneda (según moneda de cada venta)
+                      const comisionRowARS = (mostrarLotes ? ventasARS.reduce((s, v) => s + (v.comision ?? 0), 0) : 0)
+                        + (mostrarMesas ? mesasARS.reduce((s, m) => s + m.comision_calculada, 0) : 0)
+                      const comisionRowUSD = (mostrarLotes ? ventasUSD.reduce((s, v) => s + (v.comision ?? 0), 0) : 0)
+                        + (mostrarMesas ? mesasUSD.reduce((s, m) => s + m.comision_calculada, 0) : 0)
+                      const comisionRowBRL = (mostrarLotes ? ventasBRL.reduce((s, v) => s + (v.comision ?? 0), 0) : 0)
+                        + (mostrarMesas ? mesasBRL.reduce((s, m) => s + m.comision_calculada, 0) : 0)
 
                       const totalRowARS  = ventasARS.reduce((s, v) => s + v.monto_total, 0)          + mesasARS.reduce((s, m) => s + m.precio_venta, 0)
                       const totalRowUSD  = ventasUSD.reduce((s, v) => s + v.monto_total, 0)          + mesasUSD.reduce((s, m) => s + m.precio_venta, 0)
@@ -591,6 +600,7 @@ export function VentasAdminPage() {
                       const efectRowUSD  = ventasUSD.reduce((s, v) => s + v.monto_efectivo, 0)       + mesasUSD.reduce((s, m) => s + m.monto_efectivo, 0)
                       const efectRowBRL  = ventasBRL.reduce((s, v) => s + v.monto_efectivo, 0)       + mesasBRL.reduce((s, m) => s + m.monto_efectivo, 0)
 
+                      const tieneARS = totalRowARS > 0
                       const tieneUSD = totalRowUSD > 0
                       const tieneBRL = totalRowBRL > 0
 
@@ -625,18 +635,20 @@ export function VentasAdminPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="space-y-1">
-                            <div>
-                              <p className="text-xs text-muted-foreground">ARS</p>
-                              <p>{formatCurrency(transfRowARS)}</p>
-                            </div>
+                            {tieneARS && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">ARS</p>
+                                <p>{formatCurrency(transfRowARS)}</p>
+                              </div>
+                            )}
                             {tieneUSD && (
-                              <div className="pt-1 border-t">
+                              <div className={tieneARS ? 'pt-1 border-t' : ''}>
                                 <p className="text-xs text-blue-500">USD</p>
                                 <p className="text-blue-600 dark:text-blue-400">USD {transfRowUSD.toFixed(2)}</p>
                               </div>
                             )}
                             {tieneBRL && (
-                              <div className="pt-1 border-t">
+                              <div className={tieneARS || tieneUSD ? 'pt-1 border-t' : ''}>
                                 <p className="text-xs text-green-500">BRL</p>
                                 <p className="text-green-600 dark:text-green-400">R$ {transfRowBRL.toFixed(2)}</p>
                               </div>
@@ -645,18 +657,20 @@ export function VentasAdminPage() {
                         </TableCell>
                         <TableCell className="text-right">
                           <div className="space-y-1">
-                            <div>
-                              <p className="text-xs text-muted-foreground">ARS</p>
-                              <p>{formatCurrency(efectRowARS)}</p>
-                            </div>
+                            {tieneARS && (
+                              <div>
+                                <p className="text-xs text-muted-foreground">ARS</p>
+                                <p>{formatCurrency(efectRowARS)}</p>
+                              </div>
+                            )}
                             {tieneUSD && (
-                              <div className="pt-1 border-t">
+                              <div className={tieneARS ? 'pt-1 border-t' : ''}>
                                 <p className="text-xs text-blue-500">USD</p>
                                 <p className="text-blue-600 dark:text-blue-400">USD {efectRowUSD.toFixed(2)}</p>
                               </div>
                             )}
                             {tieneBRL && (
-                              <div className="pt-1 border-t">
+                              <div className={tieneARS || tieneUSD ? 'pt-1 border-t' : ''}>
                                 <p className="text-xs text-green-500">BRL</p>
                                 <p className="text-green-600 dark:text-green-400">R$ {efectRowBRL.toFixed(2)}</p>
                               </div>
@@ -665,26 +679,47 @@ export function VentasAdminPage() {
                         </TableCell>
                         <TableCell className="text-right font-bold">
                           <div className="space-y-1">
-                            <div>
-                              <p className="text-xs text-muted-foreground font-normal">ARS</p>
-                              <p>{formatCurrency(totalRowARS)}</p>
-                            </div>
+                            {tieneARS && (
+                              <div>
+                                <p className="text-xs text-muted-foreground font-normal">ARS</p>
+                                <p>{formatCurrency(totalRowARS)}</p>
+                              </div>
+                            )}
                             {tieneUSD && (
-                              <div className="pt-1 border-t">
+                              <div className={tieneARS ? 'pt-1 border-t' : ''}>
                                 <p className="text-xs text-blue-500 font-normal">USD</p>
                                 <p className="text-blue-600 dark:text-blue-400">USD {totalRowUSD.toFixed(2)}</p>
                               </div>
                             )}
                             {tieneBRL && (
-                              <div className="pt-1 border-t">
+                              <div className={tieneARS || tieneUSD ? 'pt-1 border-t' : ''}>
                                 <p className="text-xs text-green-500 font-normal">BRL</p>
                                 <p className="text-green-600 dark:text-green-400">R$ {totalRowBRL.toFixed(2)}</p>
                               </div>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="text-right font-bold text-green-600">
-                          {formatCurrency(comisiones)}
+                        <TableCell className="text-right font-bold text-green-600 dark:text-green-400">
+                          <div className="space-y-1">
+                            {tieneARS && (
+                              <div>
+                                <p className="text-xs text-muted-foreground font-normal">ARS</p>
+                                <p>{formatCurrency(comisionRowARS)}</p>
+                              </div>
+                            )}
+                            {tieneUSD && (
+                              <div className={tieneARS ? 'pt-1 border-t' : ''}>
+                                <p className="text-xs text-blue-500 font-normal">USD</p>
+                                <p className="text-blue-600 dark:text-blue-400">USD {comisionRowUSD.toFixed(2)}</p>
+                              </div>
+                            )}
+                            {tieneBRL && (
+                              <div className={tieneARS || tieneUSD ? 'pt-1 border-t' : ''}>
+                                <p className="text-xs text-green-500 font-normal">BRL</p>
+                                <p className="text-green-600 dark:text-green-400">R$ {comisionRowBRL.toFixed(2)}</p>
+                              </div>
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex items-center justify-center gap-2">

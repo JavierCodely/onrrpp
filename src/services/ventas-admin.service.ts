@@ -30,6 +30,8 @@ export interface VentaDetalle {
   monto_efectivo: number
   monto_transferencia: number
   moneda: TipoMoneda
+  /** Comisión calculada para esta venta (en la moneda de la venta) */
+  comision: number
   entradas_acreditadas: boolean
   comision_acreditada: boolean
   observaciones: string | null
@@ -78,7 +80,10 @@ export async function getVentasResumenByEvento(eventoId: string) {
           precio,
           comision_tipo,
           comision_rrpp_monto,
-          comision_rrpp_porcentaje
+          comision_rrpp_porcentaje,
+          comision_ars,
+          comision_usd,
+          comision_reales
         ),
         personal:id_rrpp (
           id,
@@ -146,6 +151,20 @@ export async function getVentasResumenByEvento(eventoId: string) {
 
       const resumen = ventasPorRRPP.get(rrppId)!
 
+      const moneda = (venta.moneda as TipoMoneda) || 'ARS'
+      const comision = lote
+        ? calcularComisionPorMoneda(
+            lote.comision_tipo,
+            lote.comision_rrpp_monto,
+            lote.comision_rrpp_porcentaje,
+            lote.comision_ars,
+            lote.comision_usd,
+            lote.comision_reales,
+            Number(venta.monto_total),
+            moneda
+          )
+        : 0
+
       resumen.ventas.push({
         id: venta.id,
         uuid_invitado: venta.uuid_invitado,
@@ -154,7 +173,8 @@ export async function getVentasResumenByEvento(eventoId: string) {
         monto_total: Number(venta.monto_total),
         monto_efectivo: Number(venta.monto_efectivo),
         monto_transferencia: Number(venta.monto_transferencia),
-        moneda: (venta.moneda as TipoMoneda) || 'ARS',
+        moneda,
+        comision,
         entradas_acreditadas: venta.entradas_acreditadas,
         comision_acreditada: venta.comision_acreditada,
         observaciones: venta.observaciones,
@@ -164,16 +184,7 @@ export async function getVentasResumenByEvento(eventoId: string) {
       resumen.total_transferencia += Number(venta.monto_transferencia)
       resumen.total_efectivo += Number(venta.monto_efectivo)
       resumen.total_a_acreditar += Number(venta.monto_total)
-
-      if (lote) {
-        const comision = calcularComision(
-          lote.comision_tipo,
-          lote.comision_rrpp_monto,
-          lote.comision_rrpp_porcentaje,
-          Number(venta.monto_total)
-        )
-        resumen.total_comisiones += comision
-      }
+      resumen.total_comisiones += comision
 
       if (!venta.entradas_acreditadas) {
         resumen.todas_entradas_acreditadas = false
@@ -249,18 +260,29 @@ export async function getVentasResumenByEvento(eventoId: string) {
 }
 
 /**
- * Calcula la comisión según el tipo
+ * Calcula la comisión según el tipo y la moneda de la venta
  */
-function calcularComision(
+function calcularComisionPorMoneda(
   tipo: 'monto' | 'porcentaje',
-  monto: number,
-  porcentaje: number,
-  precioVenta: number
+  comisionRrppMonto: number,
+  comisionRrppPorcentaje: number,
+  comisionArs: number | null | undefined,
+  comisionUsd: number | null | undefined,
+  comisionReales: number | null | undefined,
+  precioVenta: number,
+  moneda: TipoMoneda
 ): number {
+  if (tipo === 'porcentaje') {
+    return (Number(comisionRrppPorcentaje) / 100) * precioVenta
+  }
   if (tipo === 'monto') {
-    return Number(monto)
-  } else if (tipo === 'porcentaje') {
-    return (Number(porcentaje) / 100) * precioVenta
+    const monto =
+      moneda === 'USD'
+        ? Number(comisionUsd ?? 0)
+        : moneda === 'BRL'
+          ? Number(comisionReales ?? 0)
+          : Number(comisionArs ?? comisionRrppMonto ?? 0)
+    return monto
   }
   return 0
 }

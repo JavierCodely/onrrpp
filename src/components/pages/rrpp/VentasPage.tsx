@@ -210,18 +210,18 @@ export function VentasPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6 p-4 sm:p-6 max-w-[100vw] overflow-x-hidden">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Mis Ventas</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Mis Ventas</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Estadísticas y detalle de tus ventas por evento
           </p>
         </div>
       </div>
 
       {/* Selector de evento */}
-      <div className="max-w-md">
+      <div className="w-full sm:max-w-md">
         <Select value={selectedEvento} onValueChange={setSelectedEvento}>
           <SelectTrigger>
             <Calendar className="h-4 w-4 mr-2" />
@@ -304,7 +304,7 @@ export function VentasPage() {
         return (
         <>
           {/* Tarjetas de totales monetarios */}
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Efectivo</CardTitle>
@@ -313,7 +313,7 @@ export function VentasPage() {
               <CardContent className="space-y-2">
                 <div>
                   <p className="text-xs text-muted-foreground">ARS</p>
-                  <p className="text-xl font-bold text-green-600 dark:text-green-400">{formatCurrency(efectARS)}</p>
+                  <p className="text-lg sm:text-xl font-bold text-green-600 dark:text-green-400">{formatCurrency(efectARS)}</p>
                 </div>
                 {tieneUSD && (
                   <div className="pt-1 border-t">
@@ -338,7 +338,7 @@ export function VentasPage() {
               <CardContent className="space-y-2">
                 <div>
                   <p className="text-xs text-muted-foreground">ARS</p>
-                  <p className="text-xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(transfARS)}</p>
+                  <p className="text-lg sm:text-xl font-bold text-blue-600 dark:text-blue-400">{formatCurrency(transfARS)}</p>
                 </div>
                 {tieneUSD && (
                   <div className="pt-1 border-t">
@@ -363,7 +363,7 @@ export function VentasPage() {
               <CardContent className="space-y-2">
                 <div>
                   <p className="text-xs text-muted-foreground">ARS</p>
-                  <p className="text-xl font-bold text-red-600 dark:text-red-400">{formatCurrency(totalARS)}</p>
+                  <p className="text-lg sm:text-xl font-bold text-red-600 dark:text-red-400">{formatCurrency(totalARS)}</p>
                 </div>
                 {tieneUSD && (
                   <div className="pt-1 border-t">
@@ -382,14 +382,14 @@ export function VentasPage() {
           </div>
 
           {/* Tarjetas de comisiones */}
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 sm:gap-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Total Vendidos</CardTitle>
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{stats.total_ventas + ventasMesas.length}</div>
+                <div className="text-xl sm:text-2xl font-bold">{stats.total_ventas + ventasMesas.length}</div>
                 <p className="text-xs text-muted-foreground">
                   {stats.total_ventas} invitados + {ventasMesas.length} mesas
                 </p>
@@ -404,7 +404,7 @@ export function VentasPage() {
               <CardContent className="space-y-2">
                 <div>
                   <p className="text-xs text-muted-foreground">ARS</p>
-                  <p className="text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                  <p className="text-xl sm:text-2xl font-bold text-yellow-600 dark:text-yellow-400">
                     {formatCurrency(comisLotesARS + comisARS)}
                   </p>
                   <p className="text-xs text-muted-foreground">
@@ -535,7 +535,7 @@ export function VentasPage() {
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
                           <div>
                             <span className="text-muted-foreground">Ventas:</span>
                             <span className="ml-1 font-medium">{lote.cantidad_ventas}</span>
@@ -575,8 +575,8 @@ export function VentasPage() {
               </CardHeader>
               <CardContent>
                 {/* Mesa ventas - Vista desktop */}
-                <div className="hidden md:block">
-                  <Table>
+                <div className="hidden md:block overflow-x-auto -mx-1">
+                  <Table className="min-w-[600px]">
                     <TableHeader>
                       <TableRow>
                         <TableHead>Mesa</TableHead>
@@ -723,8 +723,8 @@ export function VentasPage() {
               ) : (
                 <>
                   {/* Vista desktop */}
-                  <div className="hidden md:block">
-                    <Table>
+                  <div className="hidden md:block overflow-x-auto -mx-1">
+                    <Table className="min-w-[700px]">
                       <TableHeader>
                         <TableRow>
                           <TableHead>Invitado</TableHead>
