@@ -47,7 +47,7 @@ export function useMesas(uuidEvento: string | null, uuidSector?: string | null) 
     return () => {
       channel.unsubscribe()
     }
-  }, [uuidEvento])
+  }, [uuidEvento, uuidSector])
 
   return {
     mesas,
