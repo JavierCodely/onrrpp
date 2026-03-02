@@ -194,6 +194,7 @@ export interface Cliente {
   denegado_razon: string | null
   denegado_fecha: string | null
   id_rrpp_creador: string | null
+  uuid_club: string
   created_at: string
   updated_at: string
 }

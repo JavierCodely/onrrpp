@@ -283,11 +283,19 @@ export function VentasPage() {
           if (lote.comision_tipo === 'porcentaje') {
             com = Number(v.monto_total) * (Number(lote.comision_rrpp_porcentaje) / 100)
           } else {
-            com = mon === 'ARS'
-              ? Number(lote.comision_ars ?? lote.comision_rrpp_monto ?? 0)
-              : mon === 'USD'
-                ? Number(lote.comision_usd ?? 0)
-                : Number(lote.comision_reales ?? 0)
+            const baseMonto = Number(lote.comision_rrpp_monto ?? 0)
+            if (mon === 'ARS') {
+              // Para ARS usamos siempre el monto base configurado
+              com = baseMonto
+            } else if (mon === 'USD') {
+              // Para USD usamos comision_usd si está seteado, si no, fallback al monto base
+              const usd = lote.comision_usd != null ? Number(lote.comision_usd) : NaN
+              com = !isNaN(usd) && usd > 0 ? usd : baseMonto
+            } else {
+              // Para BRL usamos comision_reales si está seteado, si no, fallback al monto base
+              const brl = lote.comision_reales != null ? Number(lote.comision_reales) : NaN
+              com = !isNaN(brl) && brl > 0 ? brl : baseMonto
+            }
           }
 
           acc[mon] += com
@@ -468,11 +476,16 @@ export function VentasPage() {
               if (row.comision_tipo === 'porcentaje') {
                 com = Number(v.monto_total) * (Number(row.comision_rrpp_porcentaje) / 100)
               } else {
-                com = mon === 'ARS'
-                  ? Number(row.comision_ars ?? row.comision_rrpp_monto ?? 0)
-                  : mon === 'USD'
-                    ? Number(row.comision_usd ?? 0)
-                    : Number(row.comision_reales ?? 0)
+                const baseMonto = Number(row.comision_rrpp_monto ?? 0)
+                if (mon === 'ARS') {
+                  com = baseMonto
+                } else if (mon === 'USD') {
+                  const usd = row.comision_usd != null ? Number(row.comision_usd) : NaN
+                  com = !isNaN(usd) && usd > 0 ? usd : baseMonto
+                } else {
+                  const brl = row.comision_reales != null ? Number(row.comision_reales) : NaN
+                  com = !isNaN(brl) && brl > 0 ? brl : baseMonto
+                }
               }
 
               row.comision_por_moneda[mon] += com
