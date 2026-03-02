@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -21,7 +21,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
-import { Search, Loader2, UserCheck, X, Pencil, ChevronDown, Globe, MapPin, Calendar, User } from 'lucide-react'
+import { Search, Loader2, UserCheck, X, Pencil, ChevronDown, Globe, MapPin, Calendar as CalendarIcon, User } from 'lucide-react'
+import { FechaNacimientoInputs, parseFechaNacimiento, toFechaNacimiento, calcularEdad } from '@/components/ui/fecha-nacimiento-inputs'
 import { useMesaInteraction } from '@/features/mesas/hooks'
 import { clientesService, type ClienteCheckResult } from '@/services/clientes.service'
 import { ubicacionesService } from '@/services/ubicaciones.service'
@@ -48,6 +49,15 @@ const unformatDni = (value: string): string => {
   return value.replace(/\D/g, '')
 }
 
+/** DNI enmascarado para sugerencias: primeros 2 visibles, X.XXX.X, últimos 2 visibles. Ej: 12345678 → 12X.XXX.X78 */
+const formatDniMasked = (dni: string): string => {
+  const n = dni.replace(/\D/g, '')
+  if (n.length < 4) return n
+  const first = n.slice(0, 2)
+  const last = n.slice(-2)
+  return `${first}X.XXX.X${last}`
+}
+
 export default function VenderMesaDialog({
   open,
   onOpenChange,
@@ -65,7 +75,6 @@ export default function VenderMesaDialog({
   // Autocomplete DNI
   const [dniSuggestions, setDniSuggestions] = useState<Array<{ dni: string; nombre: string; apellido: string }>>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
-  const pendingSearchRef = useRef(false)
 
   // Payment states
   const [metodoPago, setMetodoPago] = useState<'efectivo' | 'transferencia' | ''>('')
@@ -74,7 +83,9 @@ export default function VenderMesaDialog({
   // Form states
   const [nombre, setNombre] = useState('')
   const [apellido, setApellido] = useState('')
-  const [edad, setEdad] = useState('')
+  const [diaNac, setDiaNac] = useState('')
+  const [mesNac, setMesNac] = useState('')
+  const [anioNac, setAnioNac] = useState('')
   const [sexo, setSexo] = useState<'hombre' | 'mujer' | ''>('')
   const [email, setEmail] = useState('')
 
@@ -103,12 +114,6 @@ export default function VenderMesaDialog({
       return
     }
 
-    if (pendingSearchRef.current) {
-      pendingSearchRef.current = false
-      handleSearchDni()
-      return
-    }
-
     const timer = setTimeout(async () => {
       const { data } = await clientesService.searchClientesByDNI(dniInput, 5)
       if (data && data.length > 0) {
@@ -122,6 +127,12 @@ export default function VenderMesaDialog({
 
     return () => clearTimeout(timer)
   }, [dniInput, dniVerificado])
+
+  // Si USD o BRL no tienen precio > 0, dejar moneda en ARS
+  useEffect(() => {
+    if (moneda === 'USD' && (!mesa.precio_usd || mesa.precio_usd <= 0)) setMoneda('ARS')
+    if (moneda === 'BRL' && (!mesa.precio_reales || mesa.precio_reales <= 0)) setMoneda('ARS')
+  }, [open, mesa.precio_usd, mesa.precio_reales, moneda])
 
   // Load countries on mount
   useEffect(() => {
@@ -161,7 +172,9 @@ export default function VenderMesaDialog({
       setShowSuggestions(false)
       setNombre('')
       setApellido('')
-      setEdad('')
+      setDiaNac('')
+      setMesNac('')
+      setAnioNac('')
       setSexo('')
       setEmail('')
       setPais(DEFAULT_PAIS)
@@ -175,15 +188,20 @@ export default function VenderMesaDialog({
     }
   }, [open])
 
-  // Search DNI
-  const handleSearchDni = async () => {
-    if (!dniInput.trim()) {
-      toast.error('Ingresa un DNI')
+  // Search DNI (dniOverride: usar al hacer clic en una sugerencia para no depender del estado)
+  const handleSearchDni = async (dniOverride?: string) => {
+    const dni = (dniOverride ?? dniInput).toString().replace(/\D/g, '')
+    if (!dni.trim()) {
+      toast.error('El DNI es obligatorio')
+      return
+    }
+    if (dni.length < 8) {
+      toast.error('El DNI debe tener al menos 8 números')
       return
     }
 
     setCheckingDni(true)
-    const { data, error } = await clientesService.checkClienteByDNI(dniInput.trim())
+    const { data, error } = await clientesService.checkClienteByDNI(dni)
     setCheckingDni(false)
 
     if (error) {
@@ -204,7 +222,10 @@ export default function VenderMesaDialog({
       setClienteDenegado(false)
       setNombre(data.nombre || '')
       setApellido(data.apellido || '')
-      setEdad(data.edad?.toString() || '')
+      const fn = parseFechaNacimiento(data.fecha_nacimiento)
+      setDiaNac(fn.dia)
+      setMesNac(fn.mes)
+      setAnioNac(fn.anio)
       setSexo((data.sexo as 'hombre' | 'mujer') || '')
 
       const clientePais = data.pais || DEFAULT_PAIS
@@ -228,7 +249,9 @@ export default function VenderMesaDialog({
       setClienteDenegado(false)
       setNombre('')
       setApellido('')
-      setEdad('')
+      setDiaNac('')
+      setMesNac('')
+      setAnioNac('')
       setSexo('')
       setPais(DEFAULT_PAIS)
       setProvincia(DEFAULT_PROVINCIA)
@@ -244,10 +267,12 @@ export default function VenderMesaDialog({
     setClienteEncontrado(null)
     setClienteDenegado(false)
     setEditandoCliente(false)
-    setNombre('')
-    setApellido('')
-    setEdad('')
-    setSexo('')
+      setNombre('')
+      setApellido('')
+      setDiaNac('')
+      setMesNac('')
+      setAnioNac('')
+      setSexo('')
     setEmail('')
     setPais(DEFAULT_PAIS)
     setProvincia(DEFAULT_PROVINCIA)
@@ -289,7 +314,17 @@ export default function VenderMesaDialog({
 
     if (!dniVerificado) return
 
-    // Validate required fields for new clients
+    // Validar fecha de nacimiento obligatoria
+    const fechaNacimiento = toFechaNacimiento(diaNac, mesNac, anioNac)
+    if (!fechaNacimiento) {
+      toast.error('La fecha de nacimiento es obligatoria (día, mes y año)')
+      return
+    }
+    const edadNum = calcularEdad(fechaNacimiento)
+    if (edadNum < 16 || edadNum > 120) {
+      toast.error('La fecha de nacimiento no es válida (edad debe ser entre 16 y 120 años)')
+      return
+    }
     if (!clienteEncontrado || editandoCliente) {
       if (!nombre.trim() || !apellido.trim()) {
         toast.error('Nombre y apellido son obligatorios')
@@ -337,6 +372,11 @@ export default function VenderMesaDialog({
       tr,
       moneda
     )
+
+    // Actualizar edad y fecha de nacimiento del cliente para la próxima venta
+    if (clienteEncontrado?.cliente_id) {
+      clientesService.updateCliente(clienteEncontrado.cliente_id, { edad: edadNum, fecha_nacimiento: fechaNacimiento }).catch(() => {})
+    }
   }
 
   const precioMostrar =
@@ -384,10 +424,11 @@ export default function VenderMesaDialog({
                       setDniInput(limitedValue)
                       if (dniVerificado) handleChangeDni()
                     }}
-                    placeholder="Ej: 12.345.678"
+                    placeholder="Mín. 8 números (ej: 12.345.678)"
                     disabled={checkingDni}
                     className="text-lg font-bold"
                     inputMode="numeric"
+                    autoComplete="off"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !dniVerificado) {
                         e.preventDefault()
@@ -409,12 +450,13 @@ export default function VenderMesaDialog({
                           onClick={() => {
                             setShowSuggestions(false)
                             setDniSuggestions([])
-                            pendingSearchRef.current = true
-                            setDniInput(cliente.dni)
+                            const dni = String(cliente.dni).replace(/\D/g, '')
+                            setDniInput(dni)
+                            handleSearchDni(dni)
                           }}
                         >
                           <span className="font-medium truncate">{cliente.nombre} {cliente.apellido}</span>
-                          <span className="text-muted-foreground shrink-0">{formatDni(cliente.dni)}</span>
+                          <span className="text-muted-foreground shrink-0">{formatDniMasked(cliente.dni)}</span>
                         </button>
                       ))}
                     </div>
@@ -424,8 +466,8 @@ export default function VenderMesaDialog({
                 {!dniVerificado && (
                   <Button
                     type="button"
-                    onClick={handleSearchDni}
-                    disabled={checkingDni || !dniInput.trim()}
+                    onClick={() => handleSearchDni()}
+                    disabled={checkingDni || dniInput.replace(/\D/g, '').length < 8}
                     className="px-6"
                   >
                     {checkingDni ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
@@ -478,8 +520,15 @@ export default function VenderMesaDialog({
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span><span className="text-muted-foreground">Edad: </span><span className="font-medium">{clienteEncontrado.edad || '-'} a.</span></span>
+                      <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                      <span>
+                        <span className="text-muted-foreground">Edad: </span>
+                        <span className="font-medium">
+                          {clienteEncontrado.fecha_nacimiento
+                            ? `${calcularEdad(String(clienteEncontrado.fecha_nacimiento).slice(0, 10))} años`
+                            : clienteEncontrado.edad != null ? `${clienteEncontrado.edad} años` : '-'}
+                        </span>
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-muted-foreground" />
@@ -519,7 +568,10 @@ export default function VenderMesaDialog({
                         if (clienteEncontrado) {
                           setNombre(clienteEncontrado.nombre || '')
                           setApellido(clienteEncontrado.apellido || '')
-                          setEdad(clienteEncontrado.edad?.toString() || '')
+                          const fn = parseFechaNacimiento(clienteEncontrado.fecha_nacimiento)
+                          setDiaNac(fn.dia)
+                          setMesNac(fn.mes)
+                          setAnioNac(fn.anio)
                           setSexo((clienteEncontrado.sexo as 'hombre' | 'mujer') || '')
                           const clientePais = clienteEncontrado.pais || DEFAULT_PAIS
                           const esArgentina = clientePais === DEFAULT_PAIS
@@ -548,20 +600,16 @@ export default function VenderMesaDialog({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="nombre-mesa">Nombre *</Label>
-                    <Input id="nombre-mesa" value={nombre} onChange={(e) => setNombre(e.target.value)} required />
+                    <Input id="nombre-mesa" value={nombre} onChange={(e) => setNombre(e.target.value)} required autoComplete="off" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="apellido-mesa">Apellido *</Label>
-                    <Input id="apellido-mesa" value={apellido} onChange={(e) => setApellido(e.target.value)} required />
+                    <Input id="apellido-mesa" value={apellido} onChange={(e) => setApellido(e.target.value)} required autoComplete="off" />
                   </div>
                 </div>
 
-                {/* Edad y Sexo */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="edad-mesa">Edad</Label>
-                    <Input id="edad-mesa" type="number" min="1" max="100" value={edad} onChange={(e) => setEdad(e.target.value)} />
-                  </div>
+                {/* Sexo y Fecha de nacimiento */}
+                <div className="grid grid-cols-2 gap-1">
                   <div className="space-y-2">
                     <Label htmlFor="sexo-mesa">Sexo *</Label>
                     <Select value={sexo} onValueChange={(v: 'hombre' | 'mujer') => setSexo(v)}>
@@ -572,6 +620,15 @@ export default function VenderMesaDialog({
                       </SelectContent>
                     </Select>
                   </div>
+                  <FechaNacimientoInputs
+                    dia={diaNac}
+                    mes={mesNac}
+                    anio={anioNac}
+                    onDiaChange={setDiaNac}
+                    onMesChange={setMesNac}
+                    onAnioChange={setAnioNac}
+                    idPrefix="fecha-mesa"
+                  />
                 </div>
 
                 {/* Ubicación */}
@@ -643,18 +700,18 @@ export default function VenderMesaDialog({
               </div>
             )}
 
-            {/* Selector de moneda (solo si la mesa tiene precios alternativos) */}
-            {dniVerificado && !clienteDenegado && (mesa.precio_usd != null || mesa.precio_reales != null) && (
+            {/* Selector de moneda (solo si la mesa tiene precios alternativos > 0) */}
+            {dniVerificado && !clienteDenegado && ((mesa.precio_usd != null && mesa.precio_usd > 0) || (mesa.precio_reales != null && mesa.precio_reales > 0)) && (
               <div className="space-y-2">
                 <Label htmlFor="moneda-mesa">Moneda de cobro</Label>
                 <Select value={moneda} onValueChange={(v) => { setMoneda(v as TipoMoneda); setMetodoPago('') }}>
                   <SelectTrigger id="moneda-mesa"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="ARS">{MONEDA_LABELS['ARS']} — ${mesa.precio.toFixed(2)}</SelectItem>
-                    {mesa.precio_usd != null && (
+                    {mesa.precio_usd != null && mesa.precio_usd > 0 && (
                       <SelectItem value="USD">{MONEDA_LABELS['USD']} — USD {mesa.precio_usd.toFixed(2)}</SelectItem>
                     )}
-                    {mesa.precio_reales != null && (
+                    {mesa.precio_reales != null && mesa.precio_reales > 0 && (
                       <SelectItem value="BRL">{MONEDA_LABELS['BRL']} — R$ {mesa.precio_reales.toFixed(2)}</SelectItem>
                     )}
                   </SelectContent>

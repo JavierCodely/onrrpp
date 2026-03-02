@@ -13,6 +13,7 @@ export interface ClienteCheckResult {
   departamento: string | null
   localidad: string | null
   denegado_razon: string | null
+  fecha_nacimiento?: string | null
 }
 
 export const clientesService = {
@@ -68,6 +69,28 @@ export const clientesService = {
 
       if (error && error.code !== 'PGRST116') throw error // PGRST116 = not found
 
+      return { data, error: null }
+    } catch (error) {
+      return { data: null, error: error as Error }
+    }
+  },
+
+  /**
+   * Actualiza un cliente por ID
+   */
+  async updateCliente(
+    clienteId: string,
+    updates: { nombre?: string; apellido?: string; edad?: number | null; fecha_nacimiento?: string | null; sexo?: string; departamento?: string | null; localidad?: string | null }
+  ): Promise<{ data: unknown; error: Error | null }> {
+    try {
+      const { data, error } = await supabase
+        .from('clientes')
+        .update(updates)
+        .eq('id', clienteId)
+        .select()
+        .single()
+
+      if (error) throw error
       return { data, error: null }
     } catch (error) {
       return { data: null, error: error as Error }

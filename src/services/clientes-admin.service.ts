@@ -8,6 +8,7 @@ export interface ClienteAdmin {
   denegado: boolean
   veces_ingresado: number
   ingresado_activo: boolean
+  fecha_nacimiento?: string | null
 }
 
 export const clientesAdminService = {

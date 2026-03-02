@@ -82,6 +82,7 @@ export interface Invitado {
   nombre: string
   apellido: string
   edad: number | null
+  fecha_nacimiento?: string | null
   pais: string | null
   provincia: string | null
   departamento: string | null

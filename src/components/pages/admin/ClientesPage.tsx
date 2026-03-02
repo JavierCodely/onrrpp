@@ -5,6 +5,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@
 import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -13,12 +14,14 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { toast } from 'sonner'
+import { Calendar as CalendarIcon } from 'lucide-react'
 
 export function ClientesPage() {
   const [clientes, setClientes] = useState<ClienteAdmin[]>([])
   const [loading, setLoading] = useState(false)
   const [search, setSearch] = useState('')
   const [filtroDenegado, setFiltroDenegado] = useState<'todos' | 'denegados' | 'permitidos'>('todos')
+  const [filtroCumpleanios, setFiltroCumpleanios] = useState<string>('')
 
   const loadClientes = async () => {
     setLoading(true)
@@ -64,7 +67,17 @@ export function ClientesPage() {
       (filtroDenegado === 'denegados' && c.denegado) ||
       (filtroDenegado === 'permitidos' && !c.denegado)
 
-    return matchesSearch && matchesDenegado
+    const matchesCumpleanios =
+      !filtroCumpleanios ||
+      (c.fecha_nacimiento && (() => {
+        // Ignoramos el año, comparamos solo mes y día
+        const [, m, d] = filtroCumpleanios.split('-').map(Number)
+        const fn = String(c.fecha_nacimiento).slice(0, 10)
+        const [, cm, cd] = fn.split('-').map(Number)
+        return cm === m && cd === d
+      })())
+
+    return matchesSearch && matchesDenegado && matchesCumpleanios
   })
 
   return (
@@ -84,36 +97,56 @@ export function ClientesPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 flex flex-col md:flex-row gap-3 md:items-end">
-            <div className="flex-1 space-y-1">
-              <label className="text-xs font-medium text-muted-foreground" htmlFor="cliente-search">
-                Buscar por DNI, nombre o apellido
-              </label>
-              <Input
-                id="cliente-search"
-                placeholder="Ej: 12345678 o Juan Pérez"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
+          <div className="mb-4 flex flex-col gap-3">
+            <div className="flex flex-col md:flex-row gap-3 md:items-end">
+              <div className="flex-1 space-y-1">
+                <label className="text-xs font-medium text-muted-foreground" htmlFor="cliente-search">
+                  Buscar por DNI, nombre o apellido
+                </label>
+                <Input
+                  id="cliente-search"
+                  placeholder="Ej: 12345678 o Juan Pérez"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                />
+              </div>
+              <div className="w-full md:w-56 space-y-1">
+                <label className="text-xs font-medium text-muted-foreground">
+                  Filtro por estado de acceso
+                </label>
+                <Select
+                  value={filtroDenegado}
+                  onValueChange={(v) => setFiltroDenegado(v as typeof filtroDenegado)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Estado de acceso" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="permitidos">Solo permitidos</SelectItem>
+                    <SelectItem value="denegados">Solo denegados</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="w-full md:w-52 space-y-1">
+                <Label htmlFor="filtro-cumpleanios" className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                  <CalendarIcon className="h-3.5 w-3.5" />
+                  Cumpleaños el día
+                </Label>
+                <Input
+                  id="filtro-cumpleanios"
+                  type="date"
+                  value={filtroCumpleanios}
+                  onChange={(e) => setFiltroCumpleanios(e.target.value)}
+                  className="w-full"
+                />
+              </div>
             </div>
-            <div className="w-full md:w-56 space-y-1">
-              <label className="text-xs font-medium text-muted-foreground">
-                Filtro por estado de acceso
-              </label>
-              <Select
-                value={filtroDenegado}
-                onValueChange={(v) => setFiltroDenegado(v as typeof filtroDenegado)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Estado de acceso" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="todos">Todos</SelectItem>
-                  <SelectItem value="permitidos">Solo permitidos</SelectItem>
-                  <SelectItem value="denegados">Solo denegados</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {filtroCumpleanios && (
+              <p className="text-xs text-muted-foreground">
+                Mostrando clientes que cumplen años el {new Date(filtroCumpleanios + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'long' })}.
+              </p>
+            )}
           </div>
 
           {loading ? (
@@ -133,6 +166,7 @@ export function ClientesPage() {
                   <TableRow>
                     <TableHead>Nombre</TableHead>
                     <TableHead>DNI</TableHead>
+                    <TableHead>Cumpleaños</TableHead>
                     <TableHead className="text-center">Veces ingresado</TableHead>
                     <TableHead className="text-center">Ingresado en evento activo</TableHead>
                     <TableHead className="text-center">Prohibir ingreso</TableHead>
@@ -145,6 +179,11 @@ export function ClientesPage() {
                         {c.nombre} {c.apellido}
                       </TableCell>
                       <TableCell>{c.dni}</TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {c.fecha_nacimiento
+                          ? new Date(String(c.fecha_nacimiento).slice(0, 10) + 'T12:00:00').toLocaleDateString('es-AR', { day: 'numeric', month: 'short' })
+                          : '—'}
+                      </TableCell>
                       <TableCell className="text-center">
                         <Badge variant="outline">{c.veces_ingresado}</Badge>
                       </TableCell>

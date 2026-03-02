@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -22,7 +22,8 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible'
-import { Search, Loader2, UserCheck, Crown, X, MapPin, Calendar, User, Pencil, ChevronDown, Globe } from 'lucide-react'
+import { Search, Loader2, UserCheck, Crown, X, MapPin, Calendar as CalendarIcon, User, Pencil, ChevronDown, Globe } from 'lucide-react'
+import { FechaNacimientoInputs, parseFechaNacimiento, toFechaNacimiento, calcularEdad } from '@/components/ui/fecha-nacimiento-inputs'
 import { useAuthStore } from '@/stores/auth.store'
 import { clientesService, type ClienteCheckResult } from '@/services/clientes.service'
 import { invitadosService, type InvitadoConLote } from '@/services/invitados.service'
@@ -53,15 +54,22 @@ const DEFAULT_PROVINCIA = 'Misiones'
 
 // Formatear DNI con separador de miles (puntos)
 const formatDni = (value: string): string => {
-  // Remover todo excepto números
   const numbers = value.replace(/\D/g, '')
-  // Agregar separadores de miles
   return numbers.replace(/\B(?=(\d{3})+(?!\d))/g, '.')
 }
 
 // Obtener solo los números del DNI (sin formato)
 const unformatDni = (value: string): string => {
   return value.replace(/\D/g, '')
+}
+
+/** DNI enmascarado para sugerencias: primeros 2 visibles, X.XXX.X, últimos 2 visibles. Ej: 12345678 → 12X.XXX.X78 */
+const formatDniMasked = (dni: string): string => {
+  const n = dni.replace(/\D/g, '')
+  if (n.length < 4) return n
+  const first = n.slice(0, 2)
+  const last = n.slice(-2)
+  return `${first}X.XXX.X${last}`
 }
 
 export function InvitadoFormDialog({
@@ -94,7 +102,9 @@ export function InvitadoFormDialog({
   // Estados del formulario
   const [nombre, setNombre] = useState('')
   const [apellido, setApellido] = useState('')
-  const [edad, setEdad] = useState('')
+  const [diaNac, setDiaNac] = useState('')
+  const [mesNac, setMesNac] = useState('')
+  const [anioNac, setAnioNac] = useState('')
   const [sexo, setSexo] = useState<'hombre' | 'mujer' | ''>('')
 
   // Estados de ubicación jerárquica
@@ -123,7 +133,6 @@ export function InvitadoFormDialog({
   // Autocomplete DNI
   const [dniSuggestions, setDniSuggestions] = useState<Array<{ dni: string; nombre: string; apellido: string }>>([])
   const [showSuggestions, setShowSuggestions] = useState(false)
-  const pendingSearchRef = useRef(false)
 
   // Datos derivados
   const selectedLote = lotes.find(l => l.id === uuidLote)
@@ -181,7 +190,10 @@ export function InvitadoFormDialog({
       setDniVerificado(false) // Permitir buscar otro DNI
       setNombre(selectedInvitado.nombre)
       setApellido(selectedInvitado.apellido)
-      setEdad(selectedInvitado.edad?.toString() || '')
+      const fn = parseFechaNacimiento((selectedInvitado as InvitadoConLote & { fecha_nacimiento?: string | null }).fecha_nacimiento)
+      setDiaNac(fn.dia)
+      setMesNac(fn.mes)
+      setAnioNac(fn.anio)
       setSexo(selectedInvitado.sexo)
 
       // Para país/provincia: solo usar defaults si es Argentina o no tiene país
@@ -235,7 +247,9 @@ export function InvitadoFormDialog({
       setEditandoCliente(false)
       setNombre('')
       setApellido('')
-      setEdad('')
+      setDiaNac('')
+      setMesNac('')
+      setAnioNac('')
       setSexo('')
       setPais(DEFAULT_PAIS)
       setProvincia(DEFAULT_PROVINCIA)
@@ -278,14 +292,6 @@ export function InvitadoFormDialog({
     return () => clearTimeout(timer)
   }, [dniInput, dniVerificado])
 
-  // Trigger search after suggestion selection updates dniInput
-  useEffect(() => {
-    if (pendingSearchRef.current && dniInput.length >= 3) {
-      pendingSearchRef.current = false
-      handleSearchDni()
-    }
-  }, [dniInput])
-
   // Aplicar lote preseleccionado al abrir (modo crear nuevo)
   useEffect(() => {
     if (open && !selectedInvitado && preselectedLoteId) {
@@ -293,10 +299,15 @@ export function InvitadoFormDialog({
     }
   }, [open, selectedInvitado, preselectedLoteId])
 
-  // Buscar DNI
-  const handleSearchDni = async () => {
-    if (!dniInput.trim()) {
-      toast.error('Ingresa un DNI')
+  // Buscar DNI (dniOverride: usar al hacer clic en una sugerencia para no depender del estado)
+  const handleSearchDni = async (dniOverride?: string) => {
+    const dni = (dniOverride ?? dniInput).toString().replace(/\D/g, '')
+    if (!dni.trim()) {
+      toast.error('El DNI es obligatorio')
+      return
+    }
+    if (dni.length < 8) {
+      toast.error('El DNI debe tener al menos 8 números')
       return
     }
 
@@ -304,7 +315,7 @@ export function InvitadoFormDialog({
 
     // Primero verificar si el DNI ya tiene un invitado en este evento (solo en modo crear)
     if (!isEditMode && selectedEvento) {
-      const { existe, invitado: invExistente, error: checkError } = await invitadosService.checkDniEnEvento(dniInput.trim(), selectedEvento)
+      const { existe, invitado: invExistente, error: checkError } = await invitadosService.checkDniEnEvento(dni, selectedEvento)
       if (checkError) {
         toast.error('Error al verificar DNI', { description: checkError.message })
         setCheckingDni(false)
@@ -329,7 +340,7 @@ export function InvitadoFormDialog({
       }
     }
 
-    const { data, error } = await clientesService.checkClienteByDNI(dniInput.trim())
+    const { data, error } = await clientesService.checkClienteByDNI(dni)
     setCheckingDni(false)
 
     if (error) {
@@ -361,7 +372,10 @@ export function InvitadoFormDialog({
       setClienteDenegado(false)
       setNombre(data.nombre || '')
       setApellido(data.apellido || '')
-      setEdad(data.edad?.toString() || '')
+      const fn = parseFechaNacimiento(data.fecha_nacimiento)
+      setDiaNac(fn.dia)
+      setMesNac(fn.mes)
+      setAnioNac(fn.anio)
       setSexo((data.sexo as 'hombre' | 'mujer') || '')
 
       // Para país/provincia: solo usar defaults si es Argentina o no tiene país
@@ -390,7 +404,9 @@ export function InvitadoFormDialog({
       setClienteDenegado(false)
       setNombre('')
       setApellido('')
-      setEdad('')
+      setDiaNac('')
+      setMesNac('')
+      setAnioNac('')
       setSexo('')
       setPais(DEFAULT_PAIS)
       setProvincia(DEFAULT_PROVINCIA)
@@ -437,6 +453,13 @@ export function InvitadoFormDialog({
     if (data) setLocalidades(data)
   }
 
+  // Si USD o BRL no tienen precio > 0 en el lote seleccionado, dejar moneda en ARS
+  useEffect(() => {
+    if (!selectedLote) return
+    if (moneda === 'USD' && (!selectedLote.precio_usd || selectedLote.precio_usd <= 0)) setMoneda('ARS')
+    if (moneda === 'BRL' && (!selectedLote.precio_reales || selectedLote.precio_reales <= 0)) setMoneda('ARS')
+  }, [uuidLote, selectedLote?.precio_usd, selectedLote?.precio_reales, moneda])
+
   // Cambiar lote
   const handleLoteChange = (value: string) => {
     setUuidLote(value)
@@ -465,7 +488,17 @@ export function InvitadoFormDialog({
     e.preventDefault()
     if (!user || submitting) return
 
-    // Validaciones
+    // Validar fecha de nacimiento obligatoria
+    const fechaNacimiento = toFechaNacimiento(diaNac, mesNac, anioNac)
+    if (!fechaNacimiento) {
+      toast.error('La fecha de nacimiento es obligatoria (día, mes y año)')
+      return
+    }
+    const edadNum = calcularEdad(fechaNacimiento)
+    if (edadNum < 16 || edadNum > 120) {
+      toast.error('La fecha de nacimiento no es válida (edad debe ser entre 16 y 120 años)')
+      return
+    }
     if (!sexo) {
       toast.error('Debe seleccionar el sexo')
       return
@@ -516,7 +549,8 @@ export function InvitadoFormDialog({
         dni: dniInput.trim(),
         nombre: nombre.trim(),
         apellido: apellido.trim(),
-        edad: edad ? parseInt(edad) : null,
+        edad: edadNum,
+        fecha_nacimiento: fechaNacimiento,
         pais: pais || null,
         provincia: provincia || null,
         departamento: departamento.trim() || null,
@@ -568,7 +602,8 @@ export function InvitadoFormDialog({
         dni: dniInput.trim(),
         nombre: nombre.trim(),
         apellido: apellido.trim(),
-        edad: edad ? parseInt(edad) : null,
+        edad: edadNum,
+        fecha_nacimiento: fechaNacimiento,
         pais: pais || null,
         provincia: provincia || null,
         departamento: departamento.trim() || null,
@@ -646,9 +681,11 @@ export function InvitadoFormDialog({
     setEditandoCliente(false)
     setNombre('')
     setApellido('')
-    setEdad('')
+    setDiaNac('')
+    setMesNac('')
+    setAnioNac('')
     setSexo('')
-    setPais(DEFAULT_PAIS)
+      setPais(DEFAULT_PAIS)
     setProvincia(DEFAULT_PROVINCIA)
     setDepartamento('')
     setLocalidad('')
@@ -692,12 +729,11 @@ export function InvitadoFormDialog({
                     onChange={(e) => {
                       // Solo permitir números, remover cualquier otro caracter
                       const rawValue = unformatDni(e.target.value)
-                      // Limitar a 9 dígitos
                       const limitedValue = rawValue.slice(0, 9)
                       setDniInput(limitedValue)
                       if (dniVerificado) handleChangeDni()
                     }}
-                    placeholder="Ej: 12.345.678"
+                    placeholder="Mín. 8 números (ej: 12.345.678)"
                     disabled={checkingDni}
                     className="text-lg font-bold"
                     inputMode="numeric"
@@ -735,12 +771,13 @@ export function InvitadoFormDialog({
                           onClick={() => {
                             setShowSuggestions(false)
                             setDniSuggestions([])
-                            pendingSearchRef.current = true
-                            setDniInput(cliente.dni)
+                            const dni = String(cliente.dni).replace(/\D/g, '')
+                            setDniInput(dni)
+                            handleSearchDni(dni)
                           }}
                         >
                           <span className="font-medium truncate">{cliente.nombre} {cliente.apellido}</span>
-                          <span className="text-muted-foreground shrink-0">{formatDni(cliente.dni)}</span>
+                          <span className="text-muted-foreground shrink-0">{formatDniMasked(cliente.dni)}</span>
                         </button>
                       ))}
                     </div>
@@ -749,8 +786,8 @@ export function InvitadoFormDialog({
                 {!dniVerificado && (
                   <Button
                     type="button"
-                    onClick={handleSearchDni}
-                    disabled={checkingDni || !dniInput.trim()}
+                    onClick={() => handleSearchDni()}
+                    disabled={checkingDni || dniInput.replace(/\D/g, '').length < 8}
                     className="px-6"
                   >
                     {checkingDni ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
@@ -787,8 +824,8 @@ export function InvitadoFormDialog({
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span><span className="text-muted-foreground">Edad: </span><span className="font-medium">{invitadoExistente.edad || '-'} años</span></span>
+                      <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                      <span><span className="text-muted-foreground">Edad: </span><span className="font-medium">{invitadoExistente.fecha_nacimiento ? `${calcularEdad(String(invitadoExistente.fecha_nacimiento).slice(0, 10))} años` : (invitadoExistente.edad != null ? `${invitadoExistente.edad} años` : '-')}</span></span>
                     </div>
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-muted-foreground" />
@@ -891,8 +928,8 @@ export function InvitadoFormDialog({
                   </div>
                   <div className="grid grid-cols-2 gap-3 text-sm">
                     <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span><span className="text-muted-foreground">Edad: </span><span className="font-medium">{clienteEncontrado.edad || '-'} años</span></span>
+                      <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                      <span><span className="text-muted-foreground">Edad: </span><span className="font-medium">{clienteEncontrado.fecha_nacimiento ? `${calcularEdad(String(clienteEncontrado.fecha_nacimiento).slice(0, 10))} años` : (clienteEncontrado.edad != null ? `${clienteEncontrado.edad} años` : '-')}</span></span>
                     </div>
                     <div className="flex items-center gap-2">
                       <User className="h-4 w-4 text-muted-foreground" />
@@ -933,7 +970,10 @@ export function InvitadoFormDialog({
                         if (clienteEncontrado) {
                           setNombre(clienteEncontrado.nombre || '')
                           setApellido(clienteEncontrado.apellido || '')
-                          setEdad(clienteEncontrado.edad?.toString() || '')
+                          const fn = parseFechaNacimiento(clienteEncontrado.fecha_nacimiento)
+                          setDiaNac(fn.dia)
+                          setMesNac(fn.mes)
+                          setAnioNac(fn.anio)
                           setSexo((clienteEncontrado.sexo as 'hombre' | 'mujer') || '')
                           // Solo usar defaults si es Argentina
                           const clientePais = clienteEncontrado.pais || DEFAULT_PAIS
@@ -955,20 +995,16 @@ export function InvitadoFormDialog({
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="nombre">Nombre *</Label>
-                    <Input id="nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} required />
+                    <Input id="nombre" value={nombre} onChange={(e) => setNombre(e.target.value)} required autoComplete="off" />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="apellido">Apellido *</Label>
-                    <Input id="apellido" value={apellido} onChange={(e) => setApellido(e.target.value)} required />
+                    <Input id="apellido" value={apellido} onChange={(e) => setApellido(e.target.value)} required autoComplete="off" />
                   </div>
                 </div>
 
-                {/* Edad y Sexo */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="edad">Edad</Label>
-                    <Input id="edad" type="number" min="1" max="100" value={edad} onChange={(e) => setEdad(e.target.value)} />
-                  </div>
+                {/* Sexo y Fecha de nacimiento */}
+                <div className="grid grid-cols-2 gap-1">
                   <div className="space-y-2">
                     <Label htmlFor="sexo">Sexo *</Label>
                     <Select value={sexo} onValueChange={(v: 'hombre' | 'mujer') => setSexo(v)}>
@@ -979,6 +1015,15 @@ export function InvitadoFormDialog({
                       </SelectContent>
                     </Select>
                   </div>
+                  <FechaNacimientoInputs
+                    dia={diaNac}
+                    mes={mesNac}
+                    anio={anioNac}
+                    onDiaChange={setDiaNac}
+                    onMesChange={setMesNac}
+                    onAnioChange={setAnioNac}
+                    idPrefix="fecha-invitado"
+                  />
                 </div>
 
                 {/* Ubicación - Colapsable para País/Provincia */}
@@ -1092,18 +1137,18 @@ export function InvitadoFormDialog({
                   </Select>
                 </div>
 
-                {/* Selector de moneda (solo si el lote tiene precios alternativos) */}
-                {uuidLote && selectedLote && (selectedLote.precio_usd != null || selectedLote.precio_reales != null) && (
+                {/* Selector de moneda (solo si el lote tiene precios alternativos > 0) */}
+                {uuidLote && selectedLote && ((selectedLote.precio_usd != null && selectedLote.precio_usd > 0) || (selectedLote.precio_reales != null && selectedLote.precio_reales > 0)) && (
                   <div className="space-y-2">
                     <Label htmlFor="moneda-lote">Moneda de cobro</Label>
                     <Select value={moneda} onValueChange={(v) => { setMoneda(v as TipoMoneda); setMetodoPago('') }}>
                       <SelectTrigger id="moneda-lote"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="ARS">{MONEDA_LABELS['ARS']} — ${selectedLote.precio.toFixed(2)}</SelectItem>
-                        {selectedLote.precio_usd != null && (
+                        {selectedLote.precio_usd != null && selectedLote.precio_usd > 0 && (
                           <SelectItem value="USD">{MONEDA_LABELS['USD']} — USD {selectedLote.precio_usd.toFixed(2)}</SelectItem>
                         )}
-                        {selectedLote.precio_reales != null && (
+                        {selectedLote.precio_reales != null && selectedLote.precio_reales > 0 && (
                           <SelectItem value="BRL">{MONEDA_LABELS['BRL']} — R$ {selectedLote.precio_reales.toFixed(2)}</SelectItem>
                         )}
                       </SelectContent>
