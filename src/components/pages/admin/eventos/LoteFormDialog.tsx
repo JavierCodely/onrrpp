@@ -288,26 +288,12 @@ export function LoteFormDialog({
               )}
             </div>
 
-            {/* Comisión por moneda (monto fijo por ARS, USD, BRL; 0 = sin comisión) */}
+            {/* Comisión por moneda (monto fijo por USD, BRL; 0 = sin comisión) */}
             <div className="border rounded-md p-3 space-y-3 bg-muted/30">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                 Comisión por moneda (opcional, 0 = sin comisión)
               </p>
-              <div className="grid grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="lote-comision-ars">ARS ($)</Label>
-                  <Input
-                    id="lote-comision-ars"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={loteFormData.comision_ars}
-                    onChange={(e) =>
-                      setLoteFormData({ ...loteFormData, comision_ars: e.target.value })
-                    }
-                    placeholder="0"
-                  />
-                </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="lote-comision-usd" className="text-blue-600 dark:text-blue-400">USD ($)</Label>
                   <Input
