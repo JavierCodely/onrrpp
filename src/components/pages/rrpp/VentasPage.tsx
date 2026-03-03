@@ -273,38 +273,57 @@ export function VentasPage() {
         const comisUSD = mesasUSD.reduce((s, m) => s + m.comision_calculada, 0)
         const comisBRL = mesasBRL.reduce((s, m) => s + m.comision_calculada, 0)
 
-        // Comisiones lotes por moneda (no sumar monedas entre sí)
-        const comisLotesPorMoneda = ventas.reduce((acc, v) => {
+        // Comisiones lotes: mismo agregado que la tabla "Comisiones por Lote" para que los totales coincidan
+        const porLote = ventas.reduce((acc, v) => {
+          if (!v.uuid_lote || !v.lote) return acc
           const mon = monedaOf(v.moneda)
+          const key = v.uuid_lote
           const lote = v.lote
-          if (!lote) return acc
+
+          if (!acc[key]) {
+            acc[key] = {
+              uuid_lote: key,
+              lote_nombre: lote.nombre,
+              lote_es_vip: lote.es_vip,
+              lote_precio: lote.precio,
+              comision_tipo: lote.comision_tipo,
+              comision_rrpp_monto: lote.comision_rrpp_monto,
+              comision_rrpp_porcentaje: lote.comision_rrpp_porcentaje,
+              comision_ars: lote.comision_ars,
+              comision_usd: lote.comision_usd,
+              comision_reales: lote.comision_reales,
+              cantidad_ventas: 0,
+              comision_por_moneda: { ARS: 0, USD: 0, BRL: 0 } as Record<TipoMoneda, number>,
+            }
+          }
+
+          const row = acc[key]
+          row.cantidad_ventas += 1
 
           let com = 0
-          if (lote.comision_tipo === 'porcentaje') {
-            com = Number(v.monto_total) * (Number(lote.comision_rrpp_porcentaje) / 100)
+          if (row.comision_tipo === 'porcentaje') {
+            com = Number(v.monto_total) * (Number(row.comision_rrpp_porcentaje) / 100)
           } else {
-            const baseMonto = Number(lote.comision_rrpp_monto ?? 0)
+            const baseMonto = Number(row.comision_rrpp_monto ?? 0)
             if (mon === 'ARS') {
-              // Para ARS usamos siempre el monto base configurado
               com = baseMonto
             } else if (mon === 'USD') {
-              // Para USD usamos comision_usd si está seteado, si no, fallback al monto base
-              const usd = lote.comision_usd != null ? Number(lote.comision_usd) : NaN
+              const usd = row.comision_usd != null ? Number(row.comision_usd) : NaN
               com = !isNaN(usd) && usd > 0 ? usd : baseMonto
             } else {
-              // Para BRL usamos comision_reales si está seteado, si no, fallback al monto base
-              const brl = lote.comision_reales != null ? Number(lote.comision_reales) : NaN
+              const brl = row.comision_reales != null ? Number(row.comision_reales) : NaN
               com = !isNaN(brl) && brl > 0 ? brl : baseMonto
             }
           }
 
-          acc[mon] += com
+          row.comision_por_moneda[mon] += com
           return acc
-        }, { ARS: 0, USD: 0, BRL: 0 } as Record<TipoMoneda, number>)
+        }, {} as Record<string, { uuid_lote: string; lote_nombre: string; lote_es_vip: boolean; lote_precio: number; comision_tipo: string; comision_rrpp_monto: number; comision_rrpp_porcentaje: number; comision_ars?: number; comision_usd?: number; comision_reales?: number; cantidad_ventas: number; comision_por_moneda: Record<TipoMoneda, number> }>)
 
-        const comisLotesARS = comisLotesPorMoneda.ARS
-        const comisLotesUSD = comisLotesPorMoneda.USD
-        const comisLotesBRL = comisLotesPorMoneda.BRL
+        // Totales de comisión por moneda (lotes): suma de lo que muestra la tabla por lote
+        const comisLotesARS = Object.values(porLote).reduce((s, row) => s + (row.comision_por_moneda?.ARS ?? 0), 0)
+        const comisLotesUSD = Object.values(porLote).reduce((s, row) => s + (row.comision_por_moneda?.USD ?? 0), 0)
+        const comisLotesBRL = Object.values(porLote).reduce((s, row) => s + (row.comision_por_moneda?.BRL ?? 0), 0)
 
         const tieneUSD = totalUSD > 0 || transfUSD > 0 || efectUSD > 0
         const tieneBRL = totalBRL > 0 || transfBRL > 0 || efectBRL > 0
@@ -445,54 +464,9 @@ export function VentasPage() {
             </Card>
           </div>
 
-          {/* Comisiones por lote (separadas por moneda) */}
+          {/* Comisiones por lote (separadas por moneda) — usa el mismo porLote que los totales */}
           {ventas.length > 0 && (() => {
-            const porLote = ventas.reduce((acc, v) => {
-              if (!v.uuid_lote || !v.lote) return acc
-              const mon = monedaOf(v.moneda)
-              const key = v.uuid_lote
-
-              if (!acc[key]) {
-                acc[key] = {
-                  uuid_lote: key,
-                  lote_nombre: v.lote.nombre,
-                  lote_es_vip: v.lote.es_vip,
-                  lote_precio: v.lote.precio,
-                  comision_tipo: v.lote.comision_tipo,
-                  comision_rrpp_monto: v.lote.comision_rrpp_monto,
-                  comision_rrpp_porcentaje: v.lote.comision_rrpp_porcentaje,
-                  comision_ars: v.lote.comision_ars,
-                  comision_usd: v.lote.comision_usd,
-                  comision_reales: v.lote.comision_reales,
-                  cantidad_ventas: 0,
-                  comision_por_moneda: { ARS: 0, USD: 0, BRL: 0 } as Record<TipoMoneda, number>,
-                }
-              }
-
-              const row = acc[key]
-              row.cantidad_ventas += 1
-
-              let com = 0
-              if (row.comision_tipo === 'porcentaje') {
-                com = Number(v.monto_total) * (Number(row.comision_rrpp_porcentaje) / 100)
-              } else {
-                const baseMonto = Number(row.comision_rrpp_monto ?? 0)
-                if (mon === 'ARS') {
-                  com = baseMonto
-                } else if (mon === 'USD') {
-                  const usd = row.comision_usd != null ? Number(row.comision_usd) : NaN
-                  com = !isNaN(usd) && usd > 0 ? usd : baseMonto
-                } else {
-                  const brl = row.comision_reales != null ? Number(row.comision_reales) : NaN
-                  com = !isNaN(brl) && brl > 0 ? brl : baseMonto
-                }
-              }
-
-              row.comision_por_moneda[mon] += com
-              return acc
-            }, {} as Record<string, any>)
-
-            const lotesList = Object.values(porLote).sort((a: any, b: any) => (a.lote_nombre || '').localeCompare(b.lote_nombre || ''))
+            const lotesList = Object.values(porLote).sort((a, b) => (a.lote_nombre || '').localeCompare(b.lote_nombre || ''))
             if (lotesList.length === 0) return null
 
             return (
