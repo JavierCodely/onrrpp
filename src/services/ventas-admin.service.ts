@@ -276,13 +276,21 @@ function calcularComisionPorMoneda(
     return (Number(comisionRrppPorcentaje) / 100) * precioVenta
   }
   if (tipo === 'monto') {
-    const monto =
-      moneda === 'USD'
-        ? Number(comisionUsd ?? 0)
-        : moneda === 'BRL'
-          ? Number(comisionReales ?? 0)
-          : Number(comisionArs ?? comisionRrppMonto ?? 0)
-    return monto
+    const baseMonto = Number(comisionRrppMonto ?? 0)
+
+    // Nota: en admin muchas veces comision_ars/usd/reales quedan guardadas como 0 por defecto.
+    // Si están en 0, hacemos fallback al monto base (comision_rrpp_monto) para no mostrar comisión 0 incorrectamente.
+    if (moneda === 'USD') {
+      const usd = Number(comisionUsd ?? 0)
+      return usd > 0 ? usd : baseMonto
+    }
+    if (moneda === 'BRL') {
+      const brl = Number(comisionReales ?? 0)
+      return brl > 0 ? brl : baseMonto
+    }
+
+    const ars = Number(comisionArs ?? 0)
+    return ars > 0 ? ars : baseMonto
   }
   return 0
 }

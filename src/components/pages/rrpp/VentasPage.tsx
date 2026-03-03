@@ -482,67 +482,78 @@ export function VentasPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-3">
-                    {lotesList.map((lote: any) => (
-                      <div
-                        key={lote.uuid_lote}
-                        className="p-4 border rounded-lg hover:bg-muted/50 transition-colors space-y-3"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 flex-wrap mb-1">
-                              <h4 className="font-semibold text-base">{lote.lote_nombre}</h4>
-                              {lote.lote_es_vip ? (
-                                <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white gap-1 text-xs">
-                                  <Crown className="h-3 w-3" />
-                                  VIP
-                                </Badge>
-                              ) : (
-                                <Badge variant="secondary" className="gap-1 text-xs">
-                                  <Ticket className="h-3 w-3" />
-                                  Normal
-                                </Badge>
+                    {lotesList.map((lote) => {
+                      const baseMonto = Number(lote.comision_rrpp_monto ?? 0)
+                      const comisionArs = Number(lote.comision_ars ?? 0)
+                      const comisionUsd = Number(lote.comision_usd ?? 0)
+                      const comisionReales = Number(lote.comision_reales ?? 0)
+
+                      // En admin, comision_ars suele guardarse como 0 por defecto.
+                      // Para evitar mostrar ARS 0 cuando el lote usa comision_rrpp_monto, hacemos fallback cuando no hay valor (>0).
+                      const comisionArsDisplay = comisionArs > 0 ? comisionArs : baseMonto
+
+                      return (
+                        <div
+                          key={lote.uuid_lote}
+                          className="p-4 border rounded-lg hover:bg-muted/50 transition-colors space-y-3"
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap mb-1">
+                                <h4 className="font-semibold text-base">{lote.lote_nombre}</h4>
+                                {lote.lote_es_vip ? (
+                                  <Badge className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white gap-1 text-xs">
+                                    <Crown className="h-3 w-3" />
+                                    VIP
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="secondary" className="gap-1 text-xs">
+                                    <Ticket className="h-3 w-3" />
+                                    Normal
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0 space-y-0.5">
+                              <div className="text-xl md:text-2xl font-bold text-yellow-600 dark:text-yellow-400">
+                                {formatCurrency(Number(lote.comision_por_moneda.ARS || 0))}
+                                <span className="ml-1 text-xs text-muted-foreground font-normal">ARS</span>
+                              </div>
+                              {Number(lote.comision_por_moneda.USD || 0) > 0 && (
+                                <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                                  USD {Number(lote.comision_por_moneda.USD).toFixed(2)}
+                                </div>
+                              )}
+                              {Number(lote.comision_por_moneda.BRL || 0) > 0 && (
+                                <div className="text-sm font-semibold text-green-600 dark:text-green-400">
+                                  R$ {Number(lote.comision_por_moneda.BRL).toFixed(2)}
+                                </div>
                               )}
                             </div>
                           </div>
-                          <div className="text-right shrink-0 space-y-0.5">
-                            <div className="text-xl md:text-2xl font-bold text-yellow-600 dark:text-yellow-400">
-                              {formatCurrency(Number(lote.comision_por_moneda.ARS || 0))}
-                              <span className="ml-1 text-xs text-muted-foreground font-normal">ARS</span>
-                            </div>
-                            {Number(lote.comision_por_moneda.USD || 0) > 0 && (
-                              <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                                USD {Number(lote.comision_por_moneda.USD).toFixed(2)}
-                              </div>
-                            )}
-                            {Number(lote.comision_por_moneda.BRL || 0) > 0 && (
-                              <div className="text-sm font-semibold text-green-600 dark:text-green-400">
-                                R$ {Number(lote.comision_por_moneda.BRL).toFixed(2)}
-                              </div>
-                            )}
-                          </div>
-                        </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                          <div>
-                            <span className="text-muted-foreground">Ventas:</span>
-                            <span className="ml-1 font-medium">{lote.cantidad_ventas}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Precio (ARS):</span>
-                            <span className="ml-1 font-medium">{formatCurrency(Number(lote.lote_precio))}</span>
-                          </div>
-                          <div className="col-span-2">
-                            <span className="text-muted-foreground">Comisión:</span>
-                            <span className="ml-1 font-medium text-yellow-600 dark:text-yellow-400">
-                              {lote.comision_tipo === 'monto'
-                                ? `ARS ${formatCurrency(Number(lote.comision_ars ?? lote.comision_rrpp_monto ?? 0))} · USD ${Number(lote.comision_usd ?? 0).toFixed(2)} · BRL ${Number(lote.comision_reales ?? 0).toFixed(2)}`
-                                : `${Number(lote.comision_rrpp_porcentaje).toFixed(2)}%`
-                              }
-                            </span>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                            <div>
+                              <span className="text-muted-foreground">Ventas:</span>
+                              <span className="ml-1 font-medium">{lote.cantidad_ventas}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground">Precio (ARS):</span>
+                              <span className="ml-1 font-medium">{formatCurrency(Number(lote.lote_precio))}</span>
+                            </div>
+                            <div className="col-span-2">
+                              <span className="text-muted-foreground">Comisión:</span>
+                              <span className="ml-1 font-medium text-yellow-600 dark:text-yellow-400">
+                                {lote.comision_tipo === 'monto'
+                                  ? `ARS ${formatCurrency(comisionArsDisplay)} · USD ${comisionUsd.toFixed(2)} · BRL ${comisionReales.toFixed(2)}`
+                                  : `${Number(lote.comision_rrpp_porcentaje).toFixed(2)}%`
+                                }
+                              </span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 </CardContent>
               </Card>
