@@ -153,7 +153,7 @@ export function MesaQRDialog({
             {/* QR Code */}
             <div className="flex justify-center p-4 bg-background rounded-lg border">
               <div className="relative">
-                <StyledQRCode value={qrCode} size={isMobile ? 260 : 320} logoSrc={applicationLogo} />
+                <StyledQRCode value={qrCode} size={isMobile ? 300 : 368} logoSrc={applicationLogo} />
               </div>
             </div>
 
