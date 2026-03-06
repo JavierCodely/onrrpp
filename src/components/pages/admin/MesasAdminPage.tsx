@@ -592,20 +592,10 @@ export function MesasAdminPage() {
                 />
               )}
 
-              <p className="text-xs font-semibold text-muted-foreground mt-2">Comisión por moneda (0 = sin comisión)</p>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="space-y-1">
-                  <Label htmlFor="comision_ars" className="text-xs">ARS ($)</Label>
-                  <Input
-                    id="comision_ars"
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={formData.comision_ars}
-                    onChange={(e) => setFormData({ ...formData, comision_ars: e.target.value })}
-                    placeholder="0"
-                  />
-                </div>
+              <p className="text-xs font-semibold text-muted-foreground mt-2">
+                Comisión fija por moneda adicional (0 = sin comisión). Para ARS se usa el porcentaje o monto fijo configurado arriba.
+              </p>
+              <div className="grid grid-cols-2 gap-2">
                 <div className="space-y-1">
                   <Label htmlFor="comision_usd" className="text-xs text-blue-600 dark:text-blue-400">USD ($)</Label>
                   <Input
