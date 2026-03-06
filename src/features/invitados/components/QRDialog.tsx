@@ -13,6 +13,7 @@ import type { InvitadoConLote } from '@/services/invitados.service'
 import { toast } from 'sonner'
 import { captureElementToPngBlob, shareOrDownloadPng } from '@/utils/shareCapture'
 import { StyledQRCode } from '@/components/ui/StyledQRCode'
+import { useIsMobile } from '@/hooks/use-mobile'
 
 interface QRDialogProps {
   open: boolean
@@ -24,6 +25,7 @@ interface QRDialogProps {
 export function QRDialog({ open, onOpenChange, invitado, clubNombre }: QRDialogProps) {
   if (!invitado) return null
 
+  const isMobile = useIsMobile()
   const venta = invitado.ventas?.[0]
   const moneda = (venta?.moneda ?? 'ARS') as keyof typeof MONEDA_SIMBOLO
   const simbolo = MONEDA_SIMBOLO[moneda] ?? '$'
@@ -41,7 +43,7 @@ export function QRDialog({ open, onOpenChange, invitado, clubNombre }: QRDialogP
         )} />
         <DialogPrimitive.Content
           className={cn(
-            "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-md"
+            "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-4 shadow-lg duration-200 sm:max-w-md sm:p-6 max-h-[calc(100dvh-2rem)] overflow-y-auto"
           )}
         >
           <DialogHeader>
@@ -127,7 +129,7 @@ export function QRDialog({ open, onOpenChange, invitado, clubNombre }: QRDialogP
             {/* QR Code */}
             <div className="flex justify-center p-4 bg-background rounded-lg border">
               <div className="relative">
-                <StyledQRCode value={invitado.qr_code} size={320} logoSrc={applicationLogo} />
+                <StyledQRCode value={invitado.qr_code} size={isMobile ? 260 : 320} logoSrc={applicationLogo} />
               </div>
             </div>
 
