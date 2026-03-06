@@ -56,9 +56,9 @@ export function DashboardFilters({
         </CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
           {/* Filtro por Evento */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <Label>Evento</Label>
             <Select
               value={filters.eventoId || ''}
@@ -66,9 +66,9 @@ export function DashboardFilters({
                 setFilters({ ...filters, eventoId: value || undefined })
               }
             >
-              <SelectTrigger>
-                <Calendar className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Selecciona un evento" />
+              <SelectTrigger className="w-full min-w-0 overflow-hidden">
+                <Calendar className="h-4 w-4 mr-2 shrink-0" />
+                <SelectValue className="flex-1 min-w-0" placeholder="Selecciona un evento" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Todos los eventos</SelectItem>
@@ -82,7 +82,7 @@ export function DashboardFilters({
           </div>
 
           {/* Filtro por RRPP */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <Label>RRPP</Label>
             <Select
               value={filters.rrppId || 'ALL'}
@@ -90,9 +90,9 @@ export function DashboardFilters({
                 setFilters({ ...filters, rrppId: value === 'ALL' ? undefined : value })
               }
             >
-              <SelectTrigger>
-                <Users className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Todos los RRPPs" />
+              <SelectTrigger className="w-full min-w-0 overflow-hidden">
+                <Users className="h-4 w-4 mr-2 shrink-0" />
+                <SelectValue className="flex-1 min-w-0" placeholder="Todos los RRPPs" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Todos los RRPPs</SelectItem>
@@ -106,7 +106,7 @@ export function DashboardFilters({
           </div>
 
           {/* Filtro por Sexo */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <Label>Sexo</Label>
             <Select
               value={filters.sexo || 'ALL'}
@@ -117,8 +117,8 @@ export function DashboardFilters({
                 })
               }
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Todos" />
+              <SelectTrigger className="w-full min-w-0 overflow-hidden">
+                <SelectValue className="flex-1 min-w-0" placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Todos</SelectItem>
@@ -129,7 +129,7 @@ export function DashboardFilters({
           </div>
 
           {/* Filtro por País */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <Label>País</Label>
             <Select
               value={filters.pais || 'ALL'}
@@ -141,9 +141,9 @@ export function DashboardFilters({
                 }
               }}
             >
-              <SelectTrigger>
-                <MapPin className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Todos" />
+              <SelectTrigger className="w-full min-w-0 overflow-hidden">
+                <MapPin className="h-4 w-4 mr-2 shrink-0" />
+                <SelectValue className="flex-1 min-w-0" placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Todos los países</SelectItem>
@@ -157,7 +157,7 @@ export function DashboardFilters({
           </div>
 
           {/* Filtro por Provincia */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <Label>Provincia</Label>
             <Select
               value={filters.provincia || 'ALL'}
@@ -166,9 +166,9 @@ export function DashboardFilters({
               }
               disabled={!filters.pais}
             >
-              <SelectTrigger>
-                <MapPin className="h-4 w-4 mr-2" />
-                <SelectValue placeholder={filters.pais ? "Todas" : "Selecciona país"} />
+              <SelectTrigger className="w-full min-w-0 overflow-hidden">
+                <MapPin className="h-4 w-4 mr-2 shrink-0" />
+                <SelectValue className="flex-1 min-w-0" placeholder={filters.pais ? "Todas" : "Selecciona país"} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Todas las provincias</SelectItem>
@@ -182,7 +182,7 @@ export function DashboardFilters({
           </div>
 
           {/* Filtro por Departamento */}
-          <div className="space-y-2">
+          <div className="space-y-2 min-w-0">
             <Label>Departamento</Label>
             <Select
               value={filters.departamento || 'ALL'}
@@ -190,9 +190,9 @@ export function DashboardFilters({
                 setFilters({ ...filters, departamento: value === 'ALL' ? undefined : value })
               }
             >
-              <SelectTrigger>
-                <MapPin className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Todos" />
+              <SelectTrigger className="w-full min-w-0 overflow-hidden">
+                <MapPin className="h-4 w-4 mr-2 shrink-0" />
+                <SelectValue className="flex-1 min-w-0" placeholder="Todos" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="ALL">Todos los departamentos</SelectItem>
@@ -210,13 +210,15 @@ export function DashboardFilters({
         {hasActiveFilters && (
           <div className="flex flex-wrap gap-2 mt-4 pt-4 border-t">
             {filters.eventoId && (
-              <Badge variant="secondary">
-                Evento: {filters.eventoId === 'ALL' ? 'Todos los eventos' : eventos.find(e => e.id === filters.eventoId)?.nombre}
+              <Badge variant="secondary" className="max-w-full min-w-0">
+                <span className="min-w-0 truncate">
+                  Evento: {filters.eventoId === 'ALL' ? 'Todos los eventos' : eventos.find(e => e.id === filters.eventoId)?.nombre}
+                </span>
               </Badge>
             )}
             {filters.rrppId && (
-              <Badge variant="secondary">
-                RRPP: {rrpps.find(r => r.id === filters.rrppId)?.nombre}
+              <Badge variant="secondary" className="max-w-full min-w-0">
+                <span className="min-w-0 truncate">RRPP: {rrpps.find(r => r.id === filters.rrppId)?.nombre}</span>
               </Badge>
             )}
             {filters.sexo && (
@@ -225,18 +227,18 @@ export function DashboardFilters({
               </Badge>
             )}
             {filters.pais && (
-              <Badge variant="secondary">
-                País: {filters.pais}
+              <Badge variant="secondary" className="max-w-full min-w-0">
+                <span className="min-w-0 truncate">País: {filters.pais}</span>
               </Badge>
             )}
             {filters.provincia && (
-              <Badge variant="secondary">
-                Provincia: {filters.provincia}
+              <Badge variant="secondary" className="max-w-full min-w-0">
+                <span className="min-w-0 truncate">Provincia: {filters.provincia}</span>
               </Badge>
             )}
             {filters.departamento && (
-              <Badge variant="secondary">
-                Departamento: {filters.departamento}
+              <Badge variant="secondary" className="max-w-full min-w-0">
+                <span className="min-w-0 truncate">Departamento: {filters.departamento}</span>
               </Badge>
             )}
           </div>

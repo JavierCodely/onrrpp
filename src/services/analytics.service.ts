@@ -77,6 +77,32 @@ export interface RRPPMesaStats {
   tasa_ingreso: number
 }
 
+export interface DailySalesTopRRPP {
+  id_rrpp: string
+  nombre_rrpp: string
+  total: number
+  entradas: number
+  mesas: number
+  mesas_lugares: number
+}
+
+export interface DailySalesDay {
+  /** YYYY-MM-DD en timezone local del navegador */
+  dia: string
+  entradas_total: number
+  entradas_hombres: number
+  entradas_mujeres: number
+  mesas_lugares: number
+  total: number
+  top_rrpp: DailySalesTopRRPP | null
+}
+
+export interface DailySalesByDayResult {
+  evento_created_at: string
+  last_sale_at: string | null
+  days: DailySalesDay[]
+}
+
 class AnalyticsService {
   /**
    * Obtener estadísticas generales con filtros
@@ -977,6 +1003,185 @@ class AnalyticsService {
       return { data: rrppMesaStats, error: null }
     } catch (error) {
       console.error('Error fetching top RRPPs by mesas:', error)
+      return { data: null, error: error as Error }
+    }
+  }
+
+  /**
+   * Ventas por día (entradas + lugares de mesas) para un evento específico.
+   * - Entradas: registros de tabla `invitados` (1 invitado = 1 entrada registrada/vendida)
+   * - Mesas: suma de `cantidad_personas` de `ventas_mesas`
+   */
+  async getDailySalesByDay(eventoId: string): Promise<{
+    data: DailySalesByDayResult | null
+    error: Error | null
+  }> {
+    try {
+      const { data: evento, error: eventoError } = await supabase
+        .from('eventos')
+        .select('created_at')
+        .eq('id', eventoId)
+        .single()
+
+      if (eventoError) throw eventoError
+
+      const [{ data: invitados, error: invitadosError }, { data: ventasMesas, error: ventasMesasError }] = await Promise.all([
+        supabase
+          .from('invitados')
+          .select(`
+            created_at,
+            id_rrpp,
+            sexo,
+            rechazado,
+            personal!invitados_id_rrpp_fkey(nombre, apellido, activo)
+          `)
+          .eq('uuid_evento', eventoId)
+          .eq('personal.activo', true),
+        supabase
+          .from('ventas_mesas')
+          .select(`
+            created_at,
+            id_rrpp,
+            uuid_mesa,
+            mesa:uuid_mesa(max_personas),
+            rrpp:personal!id_rrpp(nombre, apellido)
+          `)
+          .eq('uuid_evento', eventoId),
+      ])
+
+      if (invitadosError) throw invitadosError
+      if (ventasMesasError) throw ventasMesasError
+
+      const toDayKeyFromDate = (d: Date) => {
+        const y = d.getFullYear()
+        const m = String(d.getMonth() + 1).padStart(2, '0')
+        const day = String(d.getDate()).padStart(2, '0')
+        return `${y}-${m}-${day}`
+      }
+
+      const toDayKeyFromIso = (iso: string) => toDayKeyFromDate(new Date(iso))
+
+      const startOfLocalDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate())
+
+      const maxSaleIso = (() => {
+        const all: string[] = []
+        for (const i of (invitados as any[]) || []) all.push(i.created_at)
+        for (const vm of (ventasMesas as any[]) || []) all.push(vm.created_at)
+        if (all.length === 0) return null
+        return all.reduce((max, cur) => (new Date(cur).getTime() > new Date(max).getTime() ? cur : max))
+      })()
+
+      const resultBase: DailySalesByDayResult = {
+        evento_created_at: (evento as any).created_at,
+        last_sale_at: maxSaleIso,
+        days: [],
+      }
+
+      if (!maxSaleIso) {
+        return { data: resultBase, error: null }
+      }
+
+      const start = startOfLocalDay(new Date((evento as any).created_at))
+      const end = startOfLocalDay(new Date(maxSaleIso))
+
+      const daysMap = new Map<string, DailySalesDay>()
+      for (let cur = new Date(start); cur.getTime() <= end.getTime(); cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 1)) {
+        const key = toDayKeyFromDate(cur)
+        daysMap.set(key, {
+          dia: key,
+          entradas_total: 0,
+          entradas_hombres: 0,
+          entradas_mujeres: 0,
+          mesas_lugares: 0,
+          total: 0,
+          top_rrpp: null,
+        })
+      }
+
+      const rrppNameById = new Map<string, string>()
+      const rrppByDay = new Map<string, Map<string, { entradas: number; mesas: number; mesas_lugares: number }>>()
+
+      const bumpRRPP = (
+        dayKey: string,
+        rrppId: string,
+        deltaEntradas: number,
+        deltaMesas: number,
+        deltaMesasLugares: number
+      ) => {
+        if (!rrppByDay.has(dayKey)) rrppByDay.set(dayKey, new Map())
+        const map = rrppByDay.get(dayKey)!
+        if (!map.has(rrppId)) map.set(rrppId, { entradas: 0, mesas: 0, mesas_lugares: 0 })
+        const cur = map.get(rrppId)!
+        cur.entradas += deltaEntradas
+        cur.mesas += deltaMesas
+        cur.mesas_lugares += deltaMesasLugares
+      }
+
+      ;((invitados as any[]) || []).forEach((i) => {
+        if (i.rechazado) return
+        const dayKey = toDayKeyFromIso(i.created_at)
+        const day = daysMap.get(dayKey)
+        if (!day) return
+
+        day.entradas_total += 1
+        const sexo = i.sexo
+        if (sexo === 'hombre') day.entradas_hombres += 1
+        if (sexo === 'mujer') day.entradas_mujeres += 1
+
+        const rrppId = i.id_rrpp
+        if (rrppId) {
+          const rrppNombre = `${i.personal?.nombre ?? ''} ${i.personal?.apellido ?? ''}`.trim()
+          if (rrppNombre) rrppNameById.set(rrppId, rrppNombre)
+          bumpRRPP(dayKey, rrppId, 1, 0, 0)
+        }
+      })
+
+      ;((ventasMesas as any[]) || []).forEach((vm) => {
+        const dayKey = toDayKeyFromIso(vm.created_at)
+        const day = daysMap.get(dayKey)
+        if (!day) return
+
+        const lugares = Number(vm.mesa?.max_personas || 0)
+        day.mesas_lugares += lugares
+
+        const rrppId = vm.id_rrpp
+        if (rrppId) {
+          const rrppNombre = `${vm.rrpp?.nombre ?? ''} ${vm.rrpp?.apellido ?? ''}`.trim()
+          if (rrppNombre) rrppNameById.set(rrppId, rrppNombre)
+          bumpRRPP(dayKey, rrppId, 0, 1, lugares)
+        }
+      })
+
+      for (const day of daysMap.values()) {
+        day.total = day.entradas_total + day.mesas_lugares
+
+        const rrpps = rrppByDay.get(day.dia)
+        if (!rrpps || rrpps.size === 0) {
+          day.top_rrpp = null
+          continue
+        }
+
+        let top: DailySalesTopRRPP | null = null
+        for (const [id_rrpp, agg] of rrpps.entries()) {
+          const total = agg.entradas + agg.mesas_lugares
+          if (!top || total > top.total) {
+            top = {
+              id_rrpp,
+              nombre_rrpp: rrppNameById.get(id_rrpp) || 'RRPP',
+              total,
+              entradas: agg.entradas,
+              mesas: agg.mesas,
+              mesas_lugares: agg.mesas_lugares,
+            }
+          }
+        }
+        day.top_rrpp = top
+      }
+
+      const orderedDays = Array.from(daysMap.values()).sort((a, b) => a.dia.localeCompare(b.dia))
+      return { data: { ...resultBase, days: orderedDays }, error: null }
+    } catch (error) {
+      console.error('Error fetching daily sales by day:', error)
       return { data: null, error: error as Error }
     }
   }

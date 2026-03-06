@@ -13,6 +13,7 @@ import { GenderDistributionCharts } from './dashboard/GenderDistributionCharts'
 import { TopRRPPsInvitadosChart } from './dashboard/TopRRPPsInvitadosChart'
 import { TopRRPPsIngresosChart } from './dashboard/TopRRPPsIngresosChart'
 import { TopRRPPsMesasChart } from './dashboard/TopRRPPsMesasChart'
+import { DailySalesByDayChart } from './dashboard/DailySalesByDayChart'
 
 export function DashboardPage() {
   const {
@@ -36,6 +37,7 @@ export function DashboardPage() {
     rrppData,
     rrppIngresoData,
     rrppMesaData,
+    dailySalesByDay,
     selectedLocalidad,
     rrppsByLocalidad,
     handleLocalidadClick,
@@ -81,6 +83,10 @@ export function DashboardPage() {
       {hasEventoSelected && (
         <>
           <KPICards loading={loading} stats={stats} />
+
+          {filters.eventoId && filters.eventoId !== 'ALL' && (
+            <DailySalesByDayChart loading={loading} dailySalesByDay={dailySalesByDay} />
+          )}
 
           {stats && stats.total_mesas > 0 && (
             <MesasKPICards loading={loading} stats={stats} />

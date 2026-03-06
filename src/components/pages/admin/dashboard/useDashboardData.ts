@@ -9,7 +9,9 @@ import {
   type RRPPIngresoStats,
   type RRPPLocalidadStats,
   type PaisStats,
-  type RRPPMesaStats
+  type RRPPMesaStats,
+  type DailySalesDay,
+  type DailySalesByDayResult
 } from '@/services/analytics.service'
 import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
@@ -41,6 +43,9 @@ export function useDashboardData() {
 
   const [rrppMesaData, setRRPPMesaData] = useState<RRPPMesaStats[]>([])
   const [selectedRRPPMesa, setSelectedRRPPMesa] = useState<RRPPMesaStats | null>(null)
+
+  const [dailySalesByDay, setDailySalesByDay] = useState<DailySalesDay[]>([])
+  const [dailySalesLastSaleAt, setDailySalesLastSaleAt] = useState<string | null>(null)
 
   useEffect(() => {
     loadFilterOptions()
@@ -157,7 +162,11 @@ export function useDashboardData() {
       eventoId: filters.eventoId === 'ALL' ? undefined : filters.eventoId
     }
 
-    const [statsRes, hourlyRes, locationRes, topLocalidadesRes, rrppRes, rrppIngresoRes, paisStatsRes, rrppMesaRes] = await Promise.all([
+    const dailySalesPromise: Promise<{ data: DailySalesByDayResult | null; error: Error | null }> = serviceFilters.eventoId
+      ? analyticsService.getDailySalesByDay(serviceFilters.eventoId)
+      : Promise.resolve({ data: null, error: null })
+
+    const [statsRes, hourlyRes, locationRes, topLocalidadesRes, rrppRes, rrppIngresoRes, paisStatsRes, rrppMesaRes, dailySalesRes] = await Promise.all([
       analyticsService.getDashboardStats(serviceFilters),
       analyticsService.getHourlyIngresos(serviceFilters),
       analyticsService.getLocationStats(serviceFilters, 'localidad'),
@@ -166,6 +175,7 @@ export function useDashboardData() {
       analyticsService.getTopRRPPsByIngreso(serviceFilters),
       analyticsService.getStatsByPais(serviceFilters),
       analyticsService.getTopRRPPsByMesas(serviceFilters),
+      dailySalesPromise,
     ])
 
     if (statsRes.error) {
@@ -183,6 +193,20 @@ export function useDashboardData() {
     if (rrppIngresoRes.data) setRRPPIngresoData(rrppIngresoRes.data)
     if (paisStatsRes.data) setPaisStats(paisStatsRes.data)
     if (rrppMesaRes.data) setRRPPMesaData(rrppMesaRes.data)
+
+    if (dailySalesRes?.data) {
+      setDailySalesByDay(dailySalesRes.data.days || [])
+      setDailySalesLastSaleAt(dailySalesRes.data.last_sale_at || null)
+    } else {
+      setDailySalesByDay([])
+      setDailySalesLastSaleAt(null)
+    }
+
+    if (dailySalesRes?.error) {
+      toast.error('Error al cargar ventas por día', {
+        description: dailySalesRes.error.message,
+      })
+    }
 
     setLoading(false)
   }
@@ -254,6 +278,8 @@ export function useDashboardData() {
     rrppData,
     rrppIngresoData,
     rrppMesaData,
+    dailySalesByDay,
+    dailySalesLastSaleAt,
     selectedLocalidad,
     rrppsByLocalidad,
     handleLocalidadClick,

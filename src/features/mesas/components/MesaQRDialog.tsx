@@ -2,12 +2,15 @@ import { Dialog, DialogDescription, DialogHeader, DialogTitle, DialogPortal } fr
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { Calendar, DollarSign, Users, Wine, X } from 'lucide-react'
+import { useMemo, useRef, useState } from 'react'
+import { Calendar, DollarSign, Share2, Users, Wine, X } from 'lucide-react'
 import { MONEDA_SIMBOLO } from '@/types/database'
 import { format } from 'date-fns'
 import { es } from 'date-fns/locale'
-import { QRCodeSVG } from 'qrcode.react'
 import applicationLogo from '/sponsor/onevents.webp'
+import { toast } from 'sonner'
+import { captureElementToPngBlob, shareOrDownloadPng } from '@/utils/shareCapture'
+import { StyledQRCode } from '@/components/ui/StyledQRCode'
 
 interface MesaQRDialogProps {
   open: boolean
@@ -45,6 +48,9 @@ export function MesaQRDialog({
   if (!qrCode) return null
 
   const simbolo = MONEDA_SIMBOLO[moneda as keyof typeof MONEDA_SIMBOLO] ?? '$'
+  const captureRef = useRef<HTMLDivElement | null>(null)
+  const [sharing, setSharing] = useState(false)
+  const shareTitle = useMemo(() => `QR Mesa - ${mesaNombre ?? 'Mesa'} - ${clienteNombre ?? 'Cliente'}`.trim(), [mesaNombre, clienteNombre])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -64,7 +70,7 @@ export function MesaQRDialog({
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div ref={captureRef} className="space-y-4 py-4 bg-background">
             {/* Nombre del cliente */}
             <div className="text-center space-y-2">
               <h3 className="text-2xl font-bold">
@@ -143,23 +149,9 @@ export function MesaQRDialog({
             </p>
 
             {/* QR Code */}
-            <div className="flex justify-center p-4 bg-white rounded-lg">
+            <div className="flex justify-center p-4 bg-background rounded-lg border">
               <div className="relative">
-                <QRCodeSVG
-                  id={`qr-mesa-${qrCode}`}
-                  value={qrCode}
-                  size={240}
-                  level="H"
-                  includeMargin={true}
-                />
-                {/* Logo application en el centro */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <img
-                    src={applicationLogo}
-                    alt="Application"
-                    className="w-16 h-16 object-contain"
-                  />
-                </div>
+                <StyledQRCode value={qrCode} size={320} logoSrc={applicationLogo} />
               </div>
             </div>
 
@@ -174,26 +166,58 @@ export function MesaQRDialog({
               </p>
             </div>
 
-            {/* Botón cerrar con logos */}
-            <div className="flex items-center justify-between gap-2">
-              <img
-                src="/sponsor/speed.webp"
-                alt="Speed"
-                className="h-28 w-auto object-contain"
-              />
+          </div>
+
+          {/* Acciones (no incluidas en la captura) */}
+          <div className="flex items-center justify-between gap-2">
+            <img
+              src="/sponsor/speed.webp"
+              alt="Speed"
+              className="h-24 w-auto object-contain hidden sm:block"
+            />
+            <div className="flex flex-1 justify-center gap-2">
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={sharing}
+                onClick={async () => {
+                  if (!captureRef.current) return
+                  try {
+                    setSharing(true)
+                    const blob = await captureElementToPngBlob(captureRef.current)
+                    const result = await shareOrDownloadPng({
+                      blob,
+                      fileName: shareTitle,
+                      title: shareTitle,
+                      text: 'QR de mesa',
+                    })
+                    toast.success(result.method === 'share' ? 'Compartido' : 'Imagen descargada')
+                  } catch (e) {
+                    toast.error('No se pudo compartir', {
+                      description: e instanceof Error ? e.message : 'Error desconocido',
+                    })
+                  } finally {
+                    setSharing(false)
+                  }
+                }}
+                className="px-4"
+              >
+                <Share2 className="h-4 w-4 mr-2" />
+                {sharing ? 'Generando...' : 'Compartir'}
+              </Button>
               <Button
                 onClick={() => onOpenChange(false)}
                 size="default"
-                className="flex-shrink-0 px-8"
+                className="px-8"
               >
                 Cerrar
               </Button>
-              <img
-                src="/sponsor/speed.webp"
-                alt="Speed"
-                className="h-28 w-auto object-contain"
-              />
             </div>
+            <img
+              src="/sponsor/speed.webp"
+              alt="Speed"
+              className="h-24 w-auto object-contain hidden sm:block"
+            />
           </div>
 
           <DialogPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
